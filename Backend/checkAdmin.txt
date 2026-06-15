@@ -1,0 +1,56 @@
+﻿Firebase Admin initialized successfully.
+node.exe : Error: 5 NOT_FOUND: 
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error: 5 NOT_FOUND: :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at callErrorFromStatus (D:\Downloads\Shubha App\Backend\node_modules\@grpc\grpc-js\src\call.ts:84:17)
+    at Object.onReceiveStatus (D:\Downloads\Shubha App\Backend\node_modules\@grpc\grpc-js\src\client.ts:612:51)
+    at Object.onReceiveStatus (D:\Downloads\Shubha 
+App\Backend\node_modules\@grpc\grpc-js\src\client-interceptors.ts:424:48)
+    at D:\Downloads\Shubha App\Backend\node_modules\@grpc\grpc-js\src\resolving-call.ts:170:24
+    at processTicksAndRejections (node:internal/process/task_queues:85:11)
+for call at
+    at ServiceClientImpl.makeServerStreamRequest (D:\Downloads\Shubha 
+App\Backend\node_modules\@grpc\grpc-js\src\client.ts:595:42)
+    at ServiceClientImpl.<anonymous> (D:\Downloads\Shubha 
+App\Backend\node_modules\@grpc\grpc-js\src\make-client.ts:189:15)
+    at D:\Downloads\Shubha App\Backend\node_modules\@google-cloud\firestore\build\src\v1\firestore_client.js:242:33
+    at D:\Downloads\Shubha App\Backend\node_modules\google-gax\src\streamingCalls\streamingApiCaller.ts:59:19
+    at D:\Downloads\Shubha App\Backend\node_modules\google-gax\src\normalCalls\timeout.ts:54:13
+    at Object.request (D:\Downloads\Shubha App\Backend\node_modules\google-gax\src\streamingCalls\streaming.ts:331:28)
+    at makeRequest (D:\Downloads\Shubha App\Backend\node_modules\retry-request\index.js:159:28)
+    at retryRequest (D:\Downloads\Shubha App\Backend\node_modules\retry-request\index.js:119:5)
+    at StreamProxy.setStream (D:\Downloads\Shubha 
+App\Backend\node_modules\google-gax\src\streamingCalls\streaming.ts:322:29)
+    at StreamingApiCaller.call (D:\Downloads\Shubha 
+App\Backend\node_modules\google-gax\src\streamingCalls\streamingApiCaller.ts:89:12)
+Caused by: Error
+    at D:\Downloads\Shubha App\Backend\node_modules\@google-cloud\firestore\build\src\index.js:1040:27
+    at D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\telemetry\enabled-trace-util.js:110:30
+    at NoopContextManager.with (D:\Downloads\Shubha 
+App\Backend\node_modules\@opentelemetry\api\src\context\NoopContextManager.ts:20:15)
+    at ContextAPI.with (D:\Downloads\Shubha App\Backend\node_modules\@opentelemetry\api\src\api\context.ts:68:42)
+    at NoopTracer.startActiveSpan (D:\Downloads\Shubha 
+App\Backend\node_modules\@opentelemetry\api\src\trace\NoopTracer.ts:87:27)
+    at ProxyTracer.startActiveSpan (D:\Downloads\Shubha 
+App\Backend\node_modules\@opentelemetry\api\src\trace\ProxyTracer.ts:51:20)
+    at EnabledTraceUtil.startActiveSpan (D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\telemetry\enabled-trace-util.js:102:28)
+    at Firestore.getAll (D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\index.js:1031:32)
+    at D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\reference\document-reference.js:182:36
+    at D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\telemetry\enabled-trace-util.js:110:30 {
+  code: 5,
+  details: '',
+  metadata: Metadata {
+    internalRepr: Map(1) { 'x-debug-tracking-id' => [Array] },
+    opaqueData: Map(0) {},
+    options: {}
+  }
+}

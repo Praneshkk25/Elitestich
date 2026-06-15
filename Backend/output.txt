@@ -1,0 +1,61 @@
+﻿Firebase Admin initialized successfully.
+User elitestitchworld@gmail.com already exists in Auth. UID: JhxfIYbR8DNjTwlEA2vA4mYkvQ63
+Password updated.
+node.exe : Error creating admin user: Error: 5 NOT_FOUND: 
+At C:\Program Files\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Error creating ...: 5 NOT_FOUND: :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    at callErrorFromStatus (D:\Downloads\Shubha App\Backend\node_modules\@grpc\grpc-js\src\call.ts:84:17)
+    at Object.onReceiveStatus (D:\Downloads\Shubha App\Backend\node_modules\@grpc\grpc-js\src\client.ts:360:55)
+    at Object.onReceiveStatus (D:\Downloads\Shubha 
+App\Backend\node_modules\@grpc\grpc-js\src\client-interceptors.ts:466:34)
+    at Object.onReceiveStatus (D:\Downloads\Shubha 
+App\Backend\node_modules\@grpc\grpc-js\src\client-interceptors.ts:424:48)
+    at D:\Downloads\Shubha App\Backend\node_modules\@grpc\grpc-js\src\resolving-call.ts:170:24
+    at processTicksAndRejections (node:internal/process/task_queues:85:11)
+for call at
+    at ServiceClientImpl.makeUnaryRequest (D:\Downloads\Shubha 
+App\Backend\node_modules\@grpc\grpc-js\src\client.ts:325:42)
+    at ServiceClientImpl.<anonymous> (D:\Downloads\Shubha 
+App\Backend\node_modules\@grpc\grpc-js\src\make-client.ts:189:15)
+    at D:\Downloads\Shubha App\Backend\node_modules\@google-cloud\firestore\build\src\v1\firestore_client.js:242:33
+    at D:\Downloads\Shubha App\Backend\node_modules\google-gax\src\normalCalls\timeout.ts:54:13
+    at repeat (D:\Downloads\Shubha App\Backend\node_modules\google-gax\src\normalCalls\retries.ts:110:19)
+    at D:\Downloads\Shubha App\Backend\node_modules\google-gax\src\normalCalls\retries.ts:157:7
+    at OngoingCallPromise.call (D:\Downloads\Shubha App\Backend\node_modules\google-gax\src\call.ts:81:23)
+    at NormalApiCaller.call (D:\Downloads\Shubha 
+App\Backend\node_modules\google-gax\src\normalCalls\normalApiCaller.ts:43:15)
+    at D:\Downloads\Shubha App\Backend\node_modules\google-gax\src\createApiCall.ts:157:26
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+Caused by: Error
+    at _firestore._traceUtil.startActiveSpan (D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\write-batch.js:438:27)
+    at D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\telemetry\enabled-trace-util.js:110:30
+    at NoopContextManager.with (D:\Downloads\Shubha 
+App\Backend\node_modules\@opentelemetry\api\src\context\NoopContextManager.ts:20:15)
+    at ContextAPI.with (D:\Downloads\Shubha App\Backend\node_modules\@opentelemetry\api\src\api\context.ts:68:42)
+    at NoopTracer.startActiveSpan (D:\Downloads\Shubha 
+App\Backend\node_modules\@opentelemetry\api\src\trace\NoopTracer.ts:87:27)
+    at ProxyTracer.startActiveSpan (D:\Downloads\Shubha 
+App\Backend\node_modules\@opentelemetry\api\src\trace\ProxyTracer.ts:51:20)
+    at EnabledTraceUtil.startActiveSpan (D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\telemetry\enabled-trace-util.js:102:28)
+    at WriteBatch.commit (D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\write-batch.js:436:43)
+    at D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\reference\document-reference.js:350:31
+    at D:\Downloads\Shubha 
+App\Backend\node_modules\@google-cloud\firestore\build\src\telemetry\enabled-trace-util.js:110:30 {
+  code: 5,
+  details: '',
+  metadata: Metadata {
+    internalRepr: Map(1) { 'x-debug-tracking-id' => [Array] },
+    opaqueData: Map(0) {},
+    options: {}
+  },
+  note: 'Exception occurred in retry method that was not classified as transient'
+}
