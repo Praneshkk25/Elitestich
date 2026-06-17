@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Truck, Eye, EyeOff } from 'lucide-react';
+import { auth, db } from '@/lib/firebase';
+import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function DeliveryLogin() {
     const [personnelNumber, setPersonnelNumber] = useState('');
@@ -11,22 +14,52 @@ export default function DeliveryLogin() {
     const [loading, setLoading] = useState(false);
     const router = useRouter();
 
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', user.uid));
+                    if (userDoc.exists() && userDoc.data().role === 'driver') {
+                        document.cookie = `driver_token=firebase-auth-token; path=/; max-age=86400`;
+                        if (userDoc.data().firstLogin === true) {
+                            router.push('/setup-password');
+                        } else {
+                            router.push('/delivery/dashboard');
+                        }
+                    } else {
+                        auth.signOut();
+                    }
+                } catch (e) {
+                    console.error("Error verifying driver role", e);
+                }
+            }
+        });
+        return () => unsubscribe();
+    }, [router]);
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            const { signInWithEmailAndPassword } = await import('firebase/auth');
-            const { auth } = await import('@/lib/firebase');
-            
-            // If they enter a personnel number like DP-1234 without an @ symbol, append a dummy domain
             const email = personnelNumber.includes('@') ? personnelNumber : `${personnelNumber.toLowerCase()}@delivery.local`;
-            
-            await signInWithEmailAndPassword(auth, email, password);
-            
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+            // Fetch user doc and verify role
+            const userDoc = await getDoc(doc(db, 'users', userCredential.user.uid));
+            if (!userDoc.exists() || userDoc.data().role !== 'driver') {
+                await auth.signOut();
+                throw new Error('Access denied. This portal is strictly for delivery personnel.');
+            }
+
             // Set a cookie for middleware/dashboard compatibility
             document.cookie = `driver_token=firebase-auth-token; path=/; max-age=86400`;
-            router.push('/delivery/dashboard');
+
+            if (userDoc.data().firstLogin === true) {
+                router.push('/setup-password');
+            } else {
+                router.push('/delivery/dashboard');
+            }
         } catch (err: any) {
             console.error(err);
             alert(err.message || 'Login failed');
@@ -82,7 +115,7 @@ export default function DeliveryLogin() {
                         />
                     </div>
                     <div style={{ marginBottom: '1.5rem', position: 'relative' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Password</label>
+                        <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Password or OTP</label>
                         <input
                             type={showPassword ? "text" : "password"}
                             required

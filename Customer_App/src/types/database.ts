@@ -77,7 +77,7 @@ export interface Design {
     description: string;
 }
 
-export type OrderStatus = 'pending' | 'measuring' | 'cutting' | 'stitching' | 'quality_check' | 'shipped' | 'delivered';
+export type OrderStatus = 'pending' | 'confirmed' | 'fabric_received' | 'pattern_cutting' | 'stitching' | 'stitching_progress' | 'embroidery' | 'finished' | 'pending_qc' | 'ready_for_delivery' | 'delivered';
 export type PaymentStatus = 'unpaid' | 'advance_paid' | 'fully_paid';
 
 export interface OrderPricing {
@@ -92,12 +92,16 @@ export interface Order {
     userId: string;
     orderType: 'catalog_design' | 'custom_upload';
     designId: string | null;
+    design_title?: string;
+    amount?: number;
     referenceImages: string[]; // URLs of uploaded photos
     dressType: DressCategory;
     measurementsUsed: any; // Snapshot of the measurements at the time of order
+    measurementMethod?: string;
     customizationNotes: string;
     pricing: OrderPricing;
     paymentStatus: PaymentStatus;
+    payment_status?: string;
     status: OrderStatus;
     deliveryPartnerId: string | null;
     tailorId: string | null;
@@ -106,6 +110,8 @@ export interface Order {
         timestamp: any;
         note?: string;
     }[];
+    qc_photo?: string | null;
+    qc_rejected_note?: string | null;
     createdAt: any;
 }
 

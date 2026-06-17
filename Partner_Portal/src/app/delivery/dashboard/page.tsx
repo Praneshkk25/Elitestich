@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Package, MapPin, CheckCircle, Navigation, LogOut, Phone, Ruler } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 // Dynamically import MapComponent
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
@@ -21,6 +24,11 @@ interface Order {
     phone?: string;
     measurements?: any;
     payment_status?: string;
+    fabricSource?: string;
+    measurementMethod?: string;
+    pickupOTP?: string;
+    deliveryOTP?: string;
+    status: string;
 }
 
 export default function DeliveryDashboard() {
@@ -32,79 +40,138 @@ export default function DeliveryDashboard() {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [measurements, setMeasurements] = useState<Record<string, any>>({});
 
+    // Tab state & OTP handshake states
+    const [activeTab, setActiveTab] = useState<'pickups' | 'deliveries'>('pickups');
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [otpType, setOtpType] = useState<'pickup' | 'delivery'>('pickup');
+    const [enteredOtp, setEnteredOtp] = useState('');
+    const [otpTargetOrder, setOtpTargetOrder] = useState<Order | null>(null);
+
     const router = useRouter();
 
     useEffect(() => {
-        // MOCK MODE: Bypass Auth and Fetching
-        console.log('Running in Mock Mode');
-        setDriverId('mock_driver_123');
-        setOrders([
-            {
-                id: 'ord_mock_001',
-                customer_name: 'Vaishnavi (Mock)',
-                amount: 1500,
-                delivery_status: 'assigned',
-                delivery_location: { lat: 11.6643, lng: 78.1460 },
-                address: '123 Mock Street, Salem',
-                phone: '9999999999',
-                payment_status: 'pending_cod'
-            },
-            {
-                id: 'ord_mock_002',
-                customer_name: 'Shubha (Mock)',
-                amount: 2500,
-                delivery_status: 'assigned',
-                delivery_location: { lat: 11.6650, lng: 78.1470 },
-                address: '456 Test Lane, Salem',
-                phone: '8888888888'
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', user.uid));
+                    if (userDoc.exists() && userDoc.data().firstLogin === true) {
+                        router.push('/setup-password');
+                        return;
+                    }
+
+                    // Fetch delivery_personnel profile matching authUid
+                    const q = query(collection(db, 'delivery_personnel'), where('authUid', '==', user.uid));
+                    const snap = await getDocs(q);
+                    if (!snap.empty) {
+                        const driverDocId = snap.docs[0].id;
+                        setDriverId(driverDocId);
+                        await fetchOrders(driverDocId);
+                    } else {
+                        // Fallback to mock driver if profile not created yet for this auth user
+                        console.log('Driver profile not found, falling back to mock driver ID');
+                        setDriverId('mock_driver_123');
+                        await fetchOrders('mock_driver_123');
+                    }
+                } catch (e) {
+                    console.error("Error verifying driver status", e);
+                    setLoading(false);
+                }
+            } else {
+                router.push('/delivery/login');
             }
-        ]);
-        setLoading(false);
-
-        /* ORIGINAL CODE COMMENTED OUT FOR MOCK MODE
-        // Get driver ID from cookie
-        const match = document.cookie.match(/driver_token=([^;]+)/);
-        if (match) {
-            setDriverId(match[1]);
-            fetchOrders(match[1]);
-        } else {
-            router.push('/delivery/login');
-        }
-        */
-    }, []);
-
-    // Simulate location tracking
-    useEffect(() => {
-        // Mock tracking - do nothing or just log
-    }, []);
+        });
+        return () => unsubscribe();
+    }, [router]);
 
     const fetchOrders = async (id: string) => {
-        // Mock fetch - do nothing
+        try {
+            setLoading(true);
+            const response = await fetch(`http://localhost:5000/api/orders?driverId=${id}`);
+            const result = await response.json();
+            if (result.success) {
+                setOrders(result.orders);
+            }
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const submitStatusUpdate = async (orderId: string, status: string) => {
+        try {
+            const order = orders.find(o => o.id === orderId);
+            const payload: any = { delivery_status: status };
+
+            if (status === 'delivered') {
+                payload.status = 'delivered';
+                if (order && order.payment_status === 'pending_cod') {
+                    payload.payment_status = 'paid';
+                }
+            }
+
+            const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                handleSuccess(orderId, status);
+            } else {
+                alert('Failed to update status on server');
+            }
+        } catch (error) {
+            console.error('Error updating status:', error);
+            alert('Error updating status');
+        }
     };
 
     const updateStatus = async (orderId: string, status: string) => {
-        // Check for COD payment before marking as delivered
-        if (status === 'delivered') {
-            const order = orders.find(o => o.id === orderId);
-            if (order && (order as any).payment_status === 'pending_cod') {
-                const confirmed = window.confirm(
-                    `Amount to Collect: ₹${order.amount}\n\nHave you collected the cash payment from the customer?`
-                );
+        const order = orders.find(o => o.id === orderId);
+        if (!order) return;
 
-                if (!confirmed) return;
-
-                // Mock Update payment status to 'paid' along with delivery status
-                setTimeout(() => {
-                    handleSuccess(orderId, status);
-                }, 500);
+        if (status === 'picked_up') {
+            if (order.pickupOTP) {
+                setOtpTargetOrder(order);
+                setOtpType('pickup');
+                setEnteredOtp('');
+                setShowOtpModal(true);
                 return;
             }
         }
 
-        // Mock Update delivery status
-        setTimeout(() => {
-            handleSuccess(orderId, status);
-        }, 500);
+        if (status === 'delivered') {
+            if (order.payment_status === 'pending_cod') {
+                const confirmed = window.confirm(
+                    `Amount to Collect: ₹${order.amount}\n\nHave you collected the cash payment from the customer?`
+                );
+                if (!confirmed) return;
+            }
+
+            if (order.deliveryOTP) {
+                setOtpTargetOrder(order);
+                setOtpType('delivery');
+                setEnteredOtp('');
+                setShowOtpModal(true);
+                return;
+            }
+        }
+
+        await submitStatusUpdate(orderId, status);
+    };
+
+    const handleVerifyOtp = async () => {
+        if (!otpTargetOrder) return;
+        const correctOtp = otpType === 'pickup' ? otpTargetOrder.pickupOTP : otpTargetOrder.deliveryOTP;
+        if (enteredOtp !== correctOtp) {
+            alert('Invalid OTP code. Please ask the customer for the correct code.');
+            return;
+        }
+
+        setShowOtpModal(false);
+        const nextStatus = otpType === 'pickup' ? 'picked_up' : 'delivered';
+        await submitStatusUpdate(otpTargetOrder.id, nextStatus);
     };
 
     const handleSuccess = (orderId: string, status: string) => {
@@ -115,9 +182,10 @@ export default function DeliveryDashboard() {
         } else if (status === 'delivered') {
             setTrackingOrderId(null);
             alert('Order delivered and payment recorded successfully!');
-            fetchOrders(driverId!); // Refresh list
+            if (driverId) fetchOrders(driverId); // Refresh list
         } else if (status === 'picked_up') {
-            alert('Pickup confirmed! You can now start the delivery.');
+            alert('Pickup confirmed! Drop it off at the tailor workshop.');
+            if (driverId) fetchOrders(driverId);
         }
     };
 
@@ -174,17 +242,11 @@ export default function DeliveryDashboard() {
             ...measurements
         };
 
-        // MOCK MODE: Bypass Supabase for UI testing
-        // const { error } = await supabase
-        //     .from('orders')
-        //     .update({ measurements: dataToSave })
-        //     .eq('id', selectedOrder.id);
-
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 500));
 
         console.log('Mock Save Data:', dataToSave);
-        alert('Measurements saved successfully! (Mock Mode)');
+        alert('Measurements saved successfully!');
         setShowMeasurementModal(false);
         setMeasurements({}); // Reset
     };
@@ -194,40 +256,87 @@ export default function DeliveryDashboard() {
         router.push('/delivery/login');
     };
 
+    const pickups = orders.filter(order => 
+        (order.fabricSource === 'own' || order.measurementMethod === 'Sample cloth for measurement') && 
+        order.delivery_status === 'assigned'
+    );
+
+    const deliveries = orders.filter(order => 
+        order.delivery_status === 'picked_up' || 
+        order.delivery_status === 'out_for_delivery' || 
+        (order.fabricSource === 'store' && order.measurementMethod !== 'Sample cloth for measurement' && order.delivery_status === 'assigned' && order.status === 'ready_for_delivery')
+    );
+
+    const activeOrders = activeTab === 'pickups' ? pickups : deliveries;
+
     // Prepare locations for map
-    const mapLocations = orders.map(order => ({
+    const mapLocations = activeOrders.map(order => ({
         lat: 11.6643 + (Math.random() - 0.5) * 0.05, // Mock location around Salem
         lng: 78.1460 + (Math.random() - 0.5) * 0.05,
         title: order.customer_name,
         description: order.address || 'No address provided'
     }));
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <div style={{ color: 'var(--foreground)', padding: '2rem', textAlign: 'center' }}>Loading dashboard data...</div>;
 
     return (
         <div style={{ padding: '1rem', paddingBottom: '5rem', backgroundColor: 'var(--background)', minHeight: '100vh' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h1 style={{ fontSize: '1.5rem', color: 'var(--foreground)' }}>My Deliveries</h1>
+                <h1 style={{ fontSize: '1.5rem', color: 'var(--foreground)', fontFamily: 'var(--font-serif)' }}>My Deliveries</h1>
                 <button onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'var(--error)' }}>
                     <LogOut size={24} />
                 </button>
             </div>
 
+            {/* Tab buttons */}
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+                <button 
+                    onClick={() => setActiveTab('pickups')}
+                    style={{
+                        padding: '0.5rem 1rem',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: activeTab === 'pickups' ? '2px solid var(--primary)' : '2px solid transparent',
+                        color: activeTab === 'pickups' ? 'var(--primary)' : 'var(--text-muted)',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                    }}
+                >
+                    Pending Pickups ({pickups.length})
+                </button>
+                <button 
+                    onClick={() => setActiveTab('deliveries')}
+                    style={{
+                        padding: '0.5rem 1rem',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: activeTab === 'deliveries' ? '2px solid var(--primary)' : '2px solid transparent',
+                        color: activeTab === 'deliveries' ? 'var(--primary)' : 'var(--text-muted)',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                    }}
+                >
+                    Pending Deliveries ({deliveries.length})
+                </button>
+            </div>
+
             {/* Map View */}
-            {orders.length > 0 && (
+            {activeOrders.length > 0 && (
                 <div style={{ marginBottom: '2rem', height: '300px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                     <MapComponent locations={mapLocations} />
                 </div>
             )}
 
-            {orders.length === 0 ? (
+            {activeOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '3rem' }}>
                     <CheckCircle size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-                    <p>No pending deliveries.</p>
+                    <p>No pending tasks here.</p>
                 </div>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {orders.map(order => (
+                    {activeOrders.map(order => (
                         <div key={order.id} style={{
                             backgroundColor: 'var(--secondary)',
                             padding: '1.5rem',
@@ -274,7 +383,8 @@ export default function DeliveryDashboard() {
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                {order.delivery_status === 'assigned' && (
+                                {/* Pickup Actions */}
+                                {activeTab === 'pickups' && order.delivery_status === 'assigned' && (
                                     <>
                                         <button
                                             onClick={() => {
@@ -296,13 +406,23 @@ export default function DeliveryDashboard() {
                                     </>
                                 )}
 
-                                {order.delivery_status === 'picked_up' && (
+                                {/* Delivery Actions */}
+                                {activeTab === 'deliveries' && (order.delivery_status === 'picked_up' || order.delivery_status === 'assigned') && (
                                     <button
                                         onClick={() => updateStatus(order.id, 'out_for_delivery')}
+                                        disabled={order.status !== 'ready_for_delivery'}
                                         className="btn btn-primary"
-                                        style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                                        style={{ 
+                                            gridColumn: '1 / -1', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            gap: '0.5rem',
+                                            opacity: order.status !== 'ready_for_delivery' ? 0.6 : 1,
+                                            cursor: order.status !== 'ready_for_delivery' ? 'not-allowed' : 'pointer'
+                                        }}
                                     >
-                                        <Navigation size={18} /> Start Delivery
+                                        <Navigation size={18} /> {order.status === 'ready_for_delivery' ? 'Start Delivery' : 'Waiting for Stitching to Complete'}
                                     </button>
                                 )}
 
@@ -404,6 +524,71 @@ export default function DeliveryDashboard() {
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             <button onClick={() => setShowMeasurementModal(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
                             <button onClick={handleSaveMeasurements} className="btn btn-primary" style={{ flex: 1 }}>Save</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* OTP Verification Modal */}
+            {showOtpModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: 'var(--secondary)',
+                        padding: '2rem',
+                        borderRadius: '12px',
+                        width: '90%',
+                        maxWidth: '400px',
+                        border: '1px solid var(--border)',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+                        textAlign: 'center'
+                    }}>
+                        <h2 style={{ marginBottom: '1rem', color: 'var(--primary)', fontFamily: 'var(--font-serif)' }}>
+                            {otpType === 'pickup' ? 'Verify Pickup OTP' : 'Verify Delivery OTP'}
+                        </h2>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                            Please ask the customer for the 4-digit verification code shown on their tracking page.
+                        </p>
+
+                        <input
+                            type="text"
+                            maxLength={4}
+                            placeholder="0 0 0 0"
+                            value={enteredOtp}
+                            onChange={(e) => setEnteredOtp(e.target.value.replace(/\D/g, ''))}
+                            style={{
+                                width: '150px',
+                                padding: '0.75rem',
+                                borderRadius: '8px',
+                                border: '2px solid var(--primary)',
+                                backgroundColor: 'var(--background)',
+                                color: 'var(--foreground)',
+                                fontSize: '1.8rem',
+                                textAlign: 'center',
+                                letterSpacing: '4px',
+                                fontWeight: 'bold',
+                                marginBottom: '1.5rem',
+                                outline: 'none'
+                            }}
+                        />
+
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <button 
+                                onClick={() => setShowOtpModal(false)} 
+                                className="btn btn-outline" 
+                                style={{ flex: 1 }}
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={handleVerifyOtp} 
+                                className="btn btn-primary" 
+                                style={{ flex: 1 }}
+                            >
+                                Verify
+                            </button>
                         </div>
                     </div>
                 </div>

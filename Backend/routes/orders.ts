@@ -13,10 +13,23 @@ router.post('/', async (req, res) => {
             designTitle,
             basePrice,
             includeMeasurements,
-            paymentMethod
+            paymentMethod,
+            dressType,
+            measurementMethod,
+            measurementsUsed,
+            customizationNotes,
+            fabricSource
         } = req.body;
 
         const totalAmount = basePrice + (includeMeasurements ? 500 : 0);
+
+        const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
+        const finalFabricSource = fabricSource || 'own';
+
+        const pickupOTP = (finalFabricSource === 'own' || measurementMethod === 'Sample cloth for measurement') 
+            ? generateOTP() 
+            : null;
+        const deliveryOTP = generateOTP();
 
         const mockOrderId = crypto.randomUUID();
         const mockOrder = {
@@ -28,6 +41,14 @@ router.post('/', async (req, res) => {
             status: 'pending',
             payment_status: paymentMethod === 'cod' ? 'pending_cod' : 'paid',
             payment_method: paymentMethod,
+            dressType: dressType || 'unknown',
+            measurementMethod: measurementMethod || 'Not Provided',
+            measurementsUsed: measurementsUsed || null,
+            customizationNotes: customizationNotes || '',
+            fabricSource: finalFabricSource,
+            pickupOTP,
+            deliveryOTP,
+            delivery_status: 'pending',
             created_at: new Date().toISOString()
         };
 
@@ -56,11 +77,14 @@ router.post('/', async (req, res) => {
 
 router.get('/', async (req, res) => {
     try {
-        const { tailorId, status } = req.query;
+        const { tailorId, driverId, status } = req.query;
         let query: FirebaseFirestore.Query = adminDb.collection('orders');
 
         if (tailorId) {
             query = query.where('tailorId', '==', tailorId);
+        }
+        if (driverId) {
+            query = query.where('assigned_to', '==', driverId);
         }
         if (status) {
             query = query.where('status', '==', status);

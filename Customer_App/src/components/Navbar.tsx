@@ -73,9 +73,12 @@ export default function Navbar() {
 
                     {user ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                {user.email?.split('@')[0]}
-                            </span>
+                            <Link href="/profile" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                <User size={16} style={{ color: 'var(--primary)' }} />
+                                <span style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
+                                    {user.email?.split('@')[0]}
+                                </span>
+                            </Link>
                             <button
                                 onClick={handleLogout}
                                 className={styles.iconBtn}

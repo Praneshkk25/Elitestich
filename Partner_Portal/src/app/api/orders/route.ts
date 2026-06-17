@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { sendOrderConfirmation } from '@/lib/email';
 
 export async function POST(request: Request) {
     try {
@@ -27,13 +26,6 @@ export async function POST(request: Request) {
             payment_status: paymentMethod === 'cod' ? 'pending_cod' : 'paid',
             payment_method: paymentMethod,
         };
-
-        // Send confirmation email (fire and forget to avoid blocking)
-        if (email && process.env.RESEND_API_KEY) {
-            sendOrderConfirmation(mockOrder, email).catch(err =>
-                console.error('Failed to send background email:', err)
-            );
-        }
 
         // Return success with order ID
         return NextResponse.json({

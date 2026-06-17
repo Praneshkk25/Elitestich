@@ -27,12 +27,11 @@ export default function TailorsPage() {
     const [tailors, setTailors] = useState<TailorWithStats[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
-    
+    const [submitting, setSubmitting] = useState(false);
     const [newTailor, setNewTailor] = useState({
         name: '',
         email: '',
         phone: '',
-        password: '',
         skills: [] as DressCategory[]
     });
 
@@ -55,8 +54,8 @@ export default function TailorsPage() {
                 const data = doc.data() as Tailor;
                 // Calculate stats based on orders
                 const tailorOrders = ordersData.filter(o => o.tailorId === doc.id);
-                const completedCount = tailorOrders.filter(o => o.status === 'quality_check' || o.status === 'shipped' || o.status === 'delivered').length;
-                const activeCount = tailorOrders.filter(o => o.status === 'stitching').length;
+                const completedCount = tailorOrders.filter(o => ['finished', 'pending_qc', 'ready_for_delivery', 'delivered'].includes(o.status)).length;
+                const activeCount = tailorOrders.filter(o => ['fabric_received', 'pattern_cutting', 'stitching', 'stitching_progress', 'embroidery'].includes(o.status)).length;
 
                 return {
                     ...data,
@@ -92,69 +91,37 @@ export default function TailorsPage() {
             return;
         }
 
+        setSubmitting(true);
         try {
-            // 1. Create Auth User without signing out the Admin
-            // We use a secondary Firebase App instance for this
-            const primaryApp = getApp();
-            const apps = getApps();
-            const secondaryApp = apps.find(app => app.name === 'SecondaryAuthApp') 
-                || initializeApp(primaryApp.options, 'SecondaryAuthApp');
-            const secondaryAuth = getAuth(secondaryApp);
+            const response = await fetch('http://localhost:5000/api/users/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: newTailor.name,
+                    email: newTailor.email,
+                    phone: newTailor.phone,
+                    role: 'tailor',
+                    skills: newTailor.skills
+                })
+            });
 
-            let uid: string;
-            try {
-                const userCredential = await createUserWithEmailAndPassword(
-                    secondaryAuth, 
-                    newTailor.email, 
-                    newTailor.password
-                );
-                uid = userCredential.user.uid;
-            } catch (authError: any) {
-                if (authError.code === 'auth/email-already-in-use') {
-                    // If the account was created but the database records failed, try to sign in
-                    const userCredential = await signInWithEmailAndPassword(
-                        secondaryAuth,
-                        newTailor.email,
-                        newTailor.password
-                    );
-                    uid = userCredential.user.uid;
-                } else {
-                    throw authError; // Rethrow if it's a different error
-                }
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Failed to register tailor');
             }
 
-            // 2. Add to tailors collection with the generated UID
-            await addDoc(collection(db, 'tailors'), {
-                name: newTailor.name,
-                email: newTailor.email,
-                phoneNumber: newTailor.phone,
-                skills: newTailor.skills,
-                status: 'active',
-                authUid: uid, // Reference to their auth account
-                createdAt: new Date()
-            });
-
-            // 3. Optionally add to users collection to allow them to login if role logic requires it
-            await updateDoc(doc(db, 'users', uid), {
-                email: newTailor.email,
-                role: 'tailor',
-                createdAt: new Date()
-            }).catch(async () => {
-                // If the doc doesn't exist, create it
-                await setDoc(doc(db, 'users', uid), {
-                    email: newTailor.email,
-                    role: 'tailor',
-                    createdAt: new Date()
-                });
-            });
-
-            alert('Tailor added successfully!');
+            alert('Tailor registered successfully! An email with a temporary OTP has been sent.');
             setShowAddModal(false);
-            setNewTailor({ name: '', email: '', phone: '', password: '', skills: [] });
+            setNewTailor({ name: '', email: '', phone: '', skills: [] });
             fetchTailors();
         } catch (error: any) {
             console.error('Error adding tailor:', error);
             alert('Error adding tailor: ' + error.message);
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -169,14 +136,28 @@ export default function TailorsPage() {
         }
     };
 
-    const handleDeleteTailor = async (tailorId: string) => {
-        if (!confirm('Are you sure you want to remove this tailor? This action cannot be undone.')) return;
+    const handleDeleteTailor = async (tailor: TailorWithStats) => {
+        if (!confirm(`Are you sure you want to remove tailor "${tailor.name}"? This action cannot be undone.`)) return;
         try {
-            await deleteDoc(doc(db, 'tailors', tailorId));
-            setTailors(tailors.filter(t => t.id !== tailorId));
-        } catch (error) {
+            if (!tailor.authUid) {
+                // Fallback to client-side document delete if authUid isn't present
+                await deleteDoc(doc(db, 'tailors', tailor.id));
+                setTailors(tailors.filter(t => t.id !== tailor.id));
+                return;
+            }
+
+            const response = await fetch(`http://localhost:5000/api/users/${tailor.authUid}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Failed to delete user');
+            }
+            alert('Tailor deleted successfully.');
+            setTailors(tailors.filter(t => t.id !== tailor.id));
+        } catch (error: any) {
             console.error('Error deleting tailor:', error);
-            alert('Error deleting tailor');
+            alert('Error deleting tailor: ' + error.message);
         }
     };
 
@@ -283,7 +264,7 @@ export default function TailorsPage() {
                                     </button>
                                     
                                     <button
-                                        onClick={() => handleDeleteTailor(tailor.id)}
+                                        onClick={() => handleDeleteTailor(tailor)}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
@@ -363,19 +344,6 @@ export default function TailorsPage() {
                                     />
                                 </div>
                             </div>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Temporary Password</label>
-                                <input
-                                    type="password"
-                                    required
-                                    minLength={6}
-                                    value={newTailor.password}
-                                    onChange={e => setNewTailor({ ...newTailor, password: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border)', backgroundColor: 'var(--background)', color: 'var(--foreground)' }}
-                                />
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>They will use this to login later.</p>
-                            </div>
-
                             <div style={{ marginBottom: '2rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Skills (Select all that apply)</label>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -403,9 +371,11 @@ export default function TailorsPage() {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                <button type="button" onClick={() => setShowAddModal(false)} className="btn btn-outline" style={{ flex: 1 }}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Register Tailor</button>
+                             <div style={{ display: 'flex', gap: '1rem' }}>
+                                <button type="button" onClick={() => setShowAddModal(false)} className="btn btn-outline" style={{ flex: 1 }} disabled={submitting}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={submitting}>
+                                    {submitting ? 'Registering...' : 'Register Tailor'}
+                                </button>
                             </div>
                         </form>
                     </div>

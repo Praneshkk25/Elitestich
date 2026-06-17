@@ -21,7 +21,11 @@ export default function TailorLogin() {
                 try {
                     const userDoc = await getDoc(doc(db, 'users', user.uid));
                     if (userDoc.exists() && userDoc.data().role === 'tailor') {
-                        router.push('/tailor');
+                        if (userDoc.data().firstLogin === true) {
+                            router.push('/setup-password');
+                        } else {
+                            router.push('/tailor');
+                        }
                     } else {
                         // If not a tailor, sign them out of this portal
                         auth.signOut();
@@ -47,7 +51,11 @@ export default function TailorLogin() {
                 throw new Error('Access denied. This portal is strictly for registered tailors.');
             }
 
-            router.push('/tailor');
+            if (userDoc.data().firstLogin === true) {
+                router.push('/setup-password');
+            } else {
+                router.push('/tailor');
+            }
         } catch (error: any) {
             console.error('Login error:', error);
             alert(error.message || 'Failed to login');
@@ -108,7 +116,7 @@ export default function TailorLogin() {
                     <div style={{ position: 'relative', marginBottom: '1rem' }}>
                         <input
                             type={showPassword ? "text" : "password"}
-                            placeholder="Password"
+                            placeholder="Password or OTP"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             required

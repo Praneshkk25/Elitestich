@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, query, getDocs, where } from 'firebase/firestore';
-import { Package, Truck, CheckCircle, Clock, MapPin, Scissors, MessageCircle, X } from 'lucide-react';
+import { Package, Truck, CheckCircle, Clock, MapPin, Scissors, MessageCircle, X, Ruler } from 'lucide-react';
 import Skeleton from '@/components/ui/Skeleton';
 import { Tailor } from '@/types/database';
 import ChatBox from '@/components/ChatBox';
@@ -19,6 +19,11 @@ interface Order {
     tailorId: string | null;
     dressType: string;
     createdAt: any;
+    measurementMethod?: string;
+    measurementsUsed?: Record<string, string>;
+    customizationNotes?: string;
+    qc_photo?: string;
+    qc_rejected_note?: string;
 }
 
 interface Driver {
@@ -55,10 +60,6 @@ export default function AdminOrdersPage() {
     const [tailors, setTailors] = useState<Tailor[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedChatOrder, setSelectedChatOrder] = useState<Order | null>(null);
-
-    useEffect(() => {
-        fetchDrivers();
-        fetchTailors();
 
     useEffect(() => {
         fetchDrivers();
@@ -169,6 +170,25 @@ export default function AdminOrdersPage() {
             fetchOrders(); // Refresh data
         } catch (error) {
             alert('Error assigning tailor');
+        }
+    };
+
+    const handleQcAction = async (orderId: string, approve: boolean, note?: string) => {
+        try {
+            const body = approve 
+                ? { status: 'ready_for_delivery', qc_rejected_note: null }
+                : { status: 'stitching_progress', qc_rejected_note: note || 'QC Rejected by admin.' };
+
+            await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            fetchOrders();
+            alert(approve ? 'QC Approved!' : 'QC Rejected. Sent back to tailor.');
+        } catch (error) {
+            console.error(error);
+            alert('Error updating QC status');
         }
     };
 
@@ -320,8 +340,12 @@ export default function AdminOrdersPage() {
                                 >
                                     <option value="pending">Pending</option>
                                     <option value="confirmed">Confirmed</option>
-                                    <option value="stitching">Stitching</option>
-                                    <option value="stitched">Stitched</option>
+                                    <option value="fabric_received">Fabric Checked</option>
+                                    <option value="pattern_cutting">Pattern Cutting</option>
+                                    <option value="stitching_progress">Stitched</option>
+                                    <option value="embroidery">Embroidery</option>
+                                    <option value="finished">Finished</option>
+                                    <option value="pending_qc">Pending QC</option>
                                     <option value="ready_for_delivery">Ready for Delivery</option>
                                 </select>
                             </div>
@@ -407,6 +431,130 @@ export default function AdminOrdersPage() {
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+
+                            {/* QC Approved status display */}
+                            {order.qc_photo && order.status !== 'pending_qc' && (
+                                <div style={{ width: '100%', marginBottom: '0.75rem', fontSize: '0.9rem' }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>Approved QC Photo: </span>
+                                    <a href={order.qc_photo} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 'bold', textDecoration: 'underline' }}>View Image</a>
+                                </div>
+                            )}
+
+                            {/* QC Action Section */}
+                            {order.status === 'pending_qc' && (
+                                <div style={{
+                                    width: '100%',
+                                    padding: '1.25rem',
+                                    borderRadius: '8px',
+                                    backgroundColor: 'rgba(234, 179, 8, 0.08)',
+                                    border: '1px solid rgba(234, 179, 8, 0.3)',
+                                    fontSize: '0.9rem',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '1rem',
+                                    marginBottom: '1rem'
+                                }}>
+                                    <h4 style={{ color: '#eab308', margin: 0, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        ⚠️ Quality Check Verification Pending
+                                    </h4>
+
+                                    {order.qc_photo ? (
+                                        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                                            <img 
+                                                src={order.qc_photo} 
+                                                alt="QC Completed Garment" 
+                                                style={{ maxHeight: '180px', borderRadius: '6px', border: '1px solid var(--border)', objectFit: 'cover' }} 
+                                            />
+                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                                <p style={{ color: 'var(--text-muted)', margin: 0 }}>
+                                                    Please review the tailor's completed garment photo before approving driver assignment and final shipment.
+                                                </p>
+                                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                                    <button
+                                                        onClick={() => handleQcAction(order.id, true)}
+                                                        style={{
+                                                            padding: '0.5rem 1rem',
+                                                            borderRadius: '4px',
+                                                            backgroundColor: '#10b981',
+                                                            color: '#000',
+                                                            border: 'none',
+                                                            fontWeight: 'bold',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        Approve QC
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            const note = prompt('Enter rejection feedback for the tailor:');
+                                                            if (note !== null) {
+                                                                    handleQcAction(order.id, false, note || undefined);
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            padding: '0.5rem 1rem',
+                                                            borderRadius: '4px',
+                                                            backgroundColor: '#ef4444',
+                                                            color: '#fff',
+                                                            border: 'none',
+                                                            fontWeight: 'bold',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        Reject QC
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No completed garment photo uploaded yet.</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Sizing & Customization Specifications */}
+                            <div style={{
+                                width: '105%',
+                                padding: '1rem',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                                border: '1px solid var(--border)',
+                                fontSize: '0.9rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.5rem'
+                            }}>
+                                <h4 style={{ color: 'var(--primary)', margin: 0, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Ruler size={16} /> Sizing & Customization
+                                </h4>
+                                
+                                {order.measurementMethod === 'Sample cloth for measurement' ? (
+                                    <div style={{ color: '#eab308', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                                        <span>📦 Sample Garment Pickup Required (A driver must collect a sample cloth from customer)</span>
+                                    </div>
+                                ) : order.measurementsUsed ? (
+                                    <div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                            {Object.entries(order.measurementsUsed).map(([key, val]) => (
+                                                <div key={key} style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'capitalize' }}>
+                                                        {key.replace(/([A-Z])/g, ' $1').trim()}:
+                                                    </span>
+                                                    <span style={{ color: 'var(--foreground)', fontWeight: 'bold' }}>{String(val)} in</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {order.customizationNotes && (
+                                            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
+                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'block' }}>Special Instructions:</span>
+                                                <p style={{ color: 'var(--foreground)', margin: '0.25rem 0 0 0', fontStyle: 'italic' }}>"{order.customizationNotes}"</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No measurement details provided.</span>
+                                )}
                             </div>
                             
                             {/* View Chat Button */}

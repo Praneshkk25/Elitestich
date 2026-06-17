@@ -90,10 +90,15 @@ function TrackPageContent() {
         const statusLevels: Record<string, number> = {
             'pending': 0,
             'confirmed': 1,
-            'stitching': 2,
-            'stitched': 3,
-            'ready_for_delivery': 4,
-            'delivered': 5
+            'fabric_received': 2,
+            'pattern_cutting': 3,
+            'stitching': 4,
+            'stitching_progress': 4,
+            'embroidery': 5,
+            'finished': 6,
+            'pending_qc': 7,
+            'ready_for_delivery': 8,
+            'delivered': 9
         };
 
         // Define progress levels for delivery status
@@ -112,17 +117,17 @@ function TrackPageContent() {
             case 'confirmed':
                 if (currentStatusLevel >= 1) return styles.completed;
                 return styles.active; // Pending is active on first step
-            case 'processing': // Stitching
-                if (currentStatusLevel >= 3) return styles.completed; // Stitched or later
-                if (currentStatusLevel === 2) return styles.active; // Stitching
+            case 'processing': // Stitching & Milestones
+                if (currentStatusLevel >= 6) return styles.completed; // Finished or later
+                if (currentStatusLevel >= 2) return styles.active; // Fabric checked, pattern cut, stitching, or embroidery
                 return '';
             case 'quality_check':
-                if (currentStatusLevel >= 4) return styles.completed; // Ready for delivery
-                if (currentStatusLevel === 3) return styles.active; // Stitched (Quality Check happening)
+                if (currentStatusLevel >= 8) return styles.completed; // Ready for delivery
+                if (currentStatusLevel === 6 || currentStatusLevel === 7) return styles.active; // Finished or Pending QC
                 return '';
             case 'shipped': // Out for Delivery
                 if (currentDeliveryLevel >= 4) return styles.completed; // Delivered
-                if (currentDeliveryLevel >= 3) return styles.active; // Out for delivery
+                if (currentDeliveryLevel >= 2) return styles.active; // Picked up or out for delivery
                 return '';
             default:
                 return '';
@@ -178,6 +183,32 @@ function TrackPageContent() {
                                 }}>
                                     Payment: {order.payment_status === 'pending_cod' ? 'Pending (COD)' : 'Paid'}
                                 </p>
+                                
+                                {/* OTP Display Section */}
+                                {(order.pickupOTP || order.deliveryOTP) && (
+                                    <div style={{
+                                        marginTop: '1rem',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: '6px',
+                                        background: 'rgba(212, 175, 55, 0.08)',
+                                        border: '1px solid rgba(212, 175, 55, 0.3)',
+                                        fontSize: '0.9rem',
+                                        color: 'var(--foreground)'
+                                    }}>
+                                        {order.pickupOTP && order.delivery_status !== 'picked_up' && order.delivery_status !== 'out_for_delivery' && order.delivery_status !== 'delivered' && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: order.deliveryOTP && order.delivery_status !== 'delivered' ? '0.5rem' : 0 }}>
+                                                <span style={{ color: 'var(--text-muted)' }}>Fabric/Sample Pickup OTP:</span>
+                                                <strong style={{ letterSpacing: '2px', fontSize: '1.1rem', color: 'var(--primary)' }}>{order.pickupOTP}</strong>
+                                            </div>
+                                        )}
+                                        {order.deliveryOTP && order.delivery_status !== 'delivered' && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ color: 'var(--text-muted)' }}>Garment Delivery OTP:</span>
+                                                <strong style={{ letterSpacing: '2px', fontSize: '1.1rem', color: 'var(--primary)' }}>{order.deliveryOTP}</strong>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <span className={styles.statusBadge} style={{ textTransform: 'capitalize' }}>
                                 {order.status.replace(/_/g, ' ')}
@@ -201,6 +232,26 @@ function TrackPageContent() {
                                 <div className={styles.content}>
                                     <h4>Stitching in Progress</h4>
                                     <p>Our master tailors are working on your garment.</p>
+                                    {['fabric_received', 'pattern_cutting', 'stitching', 'stitching_progress', 'embroidery'].includes(order.status) && (
+                                        <div style={{
+                                            marginTop: '0.5rem',
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '4px',
+                                            backgroundColor: 'rgba(212,175,55,0.08)',
+                                            border: '1px solid rgba(212,175,55,0.2)',
+                                            fontSize: '0.8rem',
+                                            display: 'inline-block',
+                                            fontWeight: 'bold',
+                                            color: 'var(--primary)'
+                                        }}>
+                                            Milestone: {
+                                                order.status === 'fabric_received' ? 'Fabric Checked & Prepared' :
+                                                order.status === 'pattern_cutting' ? 'Pattern Cutting' :
+                                                order.status === 'stitching' || order.status === 'stitching_progress' ? 'Stitching Custom Pattern' :
+                                                order.status === 'embroidery' ? 'Embroidery & Custom Handwork' : 'Tailoring Workspace'
+                                            }
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -209,6 +260,21 @@ function TrackPageContent() {
                                 <div className={styles.content}>
                                     <h4>Quality Check</h4>
                                     <p>Final inspection to ensure perfect fit and finish.</p>
+                                    {order.status === 'pending_qc' && (
+                                        <div style={{
+                                            marginTop: '0.5rem',
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '4px',
+                                            backgroundColor: 'rgba(234,179,8,0.08)',
+                                            border: '1px solid rgba(234,179,8,0.2)',
+                                            fontSize: '0.8rem',
+                                            display: 'inline-block',
+                                            fontWeight: 'bold',
+                                            color: '#eab308'
+                                        }}>
+                                            Status: Garment photo submitted for Admin QC Approval
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

@@ -23,54 +23,53 @@ export default function LiveMapPage() {
     useEffect(() => {
         fetchLocations();
 
-        // Subscribe to real-time updates on orders table
-        // const subscription = supabase
-        //     .channel('orders_tracking')
-        //     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
-        //         console.log('Real-time update:', payload);
-        //         // Refresh locations when an order is updated (e.g., location change)
-        //         fetchLocations();
-        //     })
-        //     .subscribe();
+        // Poll for real-time updates every 10 seconds
+        const interval = setInterval(() => {
+            fetchLocations();
+        }, 10000);
 
         return () => {
-            // subscription.unsubscribe();
+            clearInterval(interval);
         };
     }, []);
 
     const fetchLocations = async () => {
-        // Fetch orders that are out for delivery or assigned
-        // const { data: orders } = await supabase
-        //     .from('orders')
-        //     .select(`
-        //         id, 
-        //         customer_name, 
-        //         delivery_status, 
-        //         delivery_location,
-        //         delivery_personnel:assigned_to (name, personnel_number)
-        //     `)
-        //     .in('delivery_status', ['out_for_delivery', 'assigned'])
-        //     .not('delivery_location', 'is', null);
-        const orders: any = [];
+        try {
+            const response = await fetch('http://localhost:5000/api/orders');
+            const result = await response.json();
+            if (result.success && result.orders) {
+                const mappedLocations = result.orders.map((order: any) => {
+                    // Filter for active delivery orders
+                    const isDeliveryActive = ['assigned', 'picked_up', 'out_for_delivery'].includes(order.delivery_status || order.status);
+                    if (!isDeliveryActive) return null;
 
-        if (orders) {
-            const mappedLocations = orders.map((order: any) => {
-                const loc = order.delivery_location;
-                if (!loc || !loc.lat || !loc.lng) return null;
+                    // Use order delivery location or fallback to mock coordinates around Salem, India
+                    let lat = order.delivery_location?.lat;
+                    let lng = order.delivery_location?.lng;
 
-                return {
-                    lat: loc.lat,
-                    lng: loc.lng,
-                    title: `Order #${order.id.slice(0, 8)}`,
-                    description: `
-                        Status: ${order.delivery_status}
-                        Driver: ${order.delivery_personnel?.name || 'Unknown'}
-                        Customer: ${order.customer_name}
-                    `
-                };
-            }).filter(Boolean) as DeliveryLocation[];
+                    if (!lat || !lng) {
+                        // Deterministic but shifted mock coords based on Order ID
+                        const hash = order.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+                        lat = 11.6643 + ((hash % 100) / 1000) - 0.05;
+                        lng = 78.1460 + (((hash * 13) % 100) / 1000) - 0.05;
+                    }
 
-            setLocations(mappedLocations);
+                    return {
+                        lat: Number(lat),
+                        lng: Number(lng),
+                        title: `Order #${order.id.slice(0, 8)}`,
+                        description: `
+                            Status: ${order.delivery_status || 'assigned'}
+                            Customer: ${order.customer_name}
+                            Amount: ₹${order.amount || 0}
+                        `
+                    };
+                }).filter(Boolean) as DeliveryLocation[];
+
+                setLocations(mappedLocations);
+            }
+        } catch (error) {
+            console.error('Error fetching live tracker locations:', error);
         }
     };
 

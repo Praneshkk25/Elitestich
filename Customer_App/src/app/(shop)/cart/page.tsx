@@ -76,7 +76,13 @@ export default function CartPage() {
                         * Customization charges may apply during order placement.
                     </p>
 
-                    <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => alert('Proceeding to checkout for all items is coming soon! Please order items individually for now.')}>
+                    <button 
+                        className="btn btn-primary" 
+                        style={{ width: '100%' }} 
+                        onClick={() => {
+                            window.location.href = `/order?design=${items[0].id}`;
+                        }}
+                    >
                         Proceed to Checkout
                     </button>
 
