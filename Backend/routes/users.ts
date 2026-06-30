@@ -123,4 +123,85 @@ router.delete('/:uid', async (req: any, res: any) => {
     }
 });
 
+// GET /api/users/resolve-driver
+router.get('/resolve-driver', async (req: any, res: any) => {
+    const { personnel_number } = req.query;
+    if (!personnel_number) {
+        return res.status(400).json({ success: false, message: 'Missing personnel_number' });
+    }
+
+    try {
+        const driversRef = adminDb.collection('delivery_personnel');
+        const querySnapshot = await driversRef.where('personnel_number', '==', personnel_number.toUpperCase().trim()).get();
+
+        if (querySnapshot.empty) {
+            return res.status(404).json({ success: false, message: 'Driver not found with this personnel number' });
+        }
+
+        const driverData = querySnapshot.docs[0].data();
+        const authUid = driverData.authUid;
+
+        if (!authUid) {
+            return res.status(404).json({ success: false, message: 'Driver auth profile not configured' });
+        }
+
+        const userDoc = await adminDb.collection('users').doc(authUid).get();
+        if (!userDoc.exists) {
+            return res.status(404).json({ success: false, message: 'Driver account credentials not found' });
+        }
+
+        res.status(200).json({
+            success: true,
+            email: userDoc.data()?.email
+        });
+    } catch (error: any) {
+        console.error('Error resolving driver:', error);
+        res.status(500).json({ success: false, message: error.message || 'Resolution failed' });
+    }
+});
+
+// GET /api/users/tailors
+router.get('/tailors', async (req: any, res: any) => {
+    try {
+        const snapshot = await adminDb.collection('tailors').where('status', '==', 'active').get();
+        const tailors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.status(200).json({ success: true, tailors });
+    } catch (error: any) {
+        console.error('Error fetching tailors:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// GET /api/users/drivers
+router.get('/drivers', async (req: any, res: any) => {
+    try {
+        const snapshot = await adminDb.collection('delivery_personnel').where('status', '==', 'active').get();
+        const drivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.status(200).json({ success: true, drivers });
+    } catch (error: any) {
+        console.error('Error fetching drivers:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// GET /api/users/drivers/:id
+router.get('/drivers/:id', async (req: any, res: any) => {
+    const { id } = req.params;
+    try {
+        let snapshot = await adminDb.collection('delivery_personnel').where('authUid', '==', id).get();
+        if (snapshot.empty) {
+            const doc = await adminDb.collection('delivery_personnel').doc(id).get();
+            if (doc.exists) {
+                return res.status(200).json({ success: true, driver: { id: doc.id, ...doc.data() } });
+            }
+            return res.status(404).json({ success: false, message: 'Driver not found' });
+        }
+        const doc = snapshot.docs[0];
+        res.status(200).json({ success: true, driver: { id: doc.id, ...doc.data() } });
+    } catch (error: any) {
+        console.error('Error fetching driver:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 export default router;

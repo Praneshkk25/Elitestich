@@ -124,4 +124,46 @@ router.patch('/:id', async (req, res) => {
     }
 });
 
+router.get('/:id/messages', async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        const snapshot = await adminDb.collection(`orders/${orderId}/messages`).orderBy('timestamp', 'asc').get();
+        const messages = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                timestamp: data.timestamp ? (data.timestamp.toDate ? data.timestamp.toDate().toISOString() : data.timestamp) : null
+            };
+        });
+        res.json({ success: true, messages });
+    } catch (err: any) {
+        console.error('Error fetching messages:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/:id/messages', async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        const { senderId, senderName, senderRole, text, imageUrl, audioUrl } = req.body;
+        
+        const messageData: any = {
+            senderId,
+            senderName,
+            senderRole,
+            text: text || '',
+            timestamp: new Date().toISOString()
+        };
+        if (imageUrl) messageData.imageUrl = imageUrl;
+        if (audioUrl) messageData.audioUrl = audioUrl;
+
+        const docRef = await adminDb.collection(`orders/${orderId}/messages`).add(messageData);
+        res.json({ success: true, messageId: docRef.id });
+    } catch (err: any) {
+        console.error('Error sending message:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 export default router;

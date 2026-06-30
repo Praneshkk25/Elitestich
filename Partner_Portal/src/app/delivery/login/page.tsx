@@ -42,7 +42,16 @@ export default function DeliveryLogin() {
         setLoading(true);
 
         try {
-            const email = personnelNumber.includes('@') ? personnelNumber : `${personnelNumber.toLowerCase()}@delivery.local`;
+            let email = personnelNumber.trim();
+            if (!email.includes('@')) {
+                const res = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/users/resolve-driver?personnel_number=${encodeURIComponent(email)}`);
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    throw new Error(data.message || 'Could not find a driver with this personnel number.');
+                }
+                email = data.email;
+            }
+
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
             // Fetch user doc and verify role

@@ -75,7 +75,7 @@ export default function TailorDashboard() {
 
     const fetchOrders = async () => {
         try {
-            const response = await fetch(`http://localhost:5000/api/orders?tailorId=${tailorDocId}`);
+            const response = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders?tailorId=${tailorDocId}`);
             const data = await response.json();
             if (data.success) {
                 const ordersData = data.orders;
@@ -98,7 +98,7 @@ export default function TailorDashboard() {
 
     const updateMilestone = async (orderId: string, nextStatus: string, extraData: any = {}) => {
         try {
-            await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+            await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: nextStatus, ...extraData })
@@ -128,7 +128,7 @@ export default function TailorDashboard() {
     const submitForQc = async (orderId: string) => {
         if (!qcPhotoBase64) return;
         try {
-            await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+            await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 

@@ -1,0 +1,227 @@
+.wrapper {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* ── Large preview image box ── */
+.previewImageBox {
+    position: relative;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    aspect-ratio: 3 / 4;
+    background: linear-gradient(145deg, #f5f0ea, #ede8e0);
+    border-radius: 1rem;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e8e0d4;
+}
+
+.previewImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    animation: fadeIn 0.35s ease forwards;
+    transition: opacity 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(1.03); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+/* ── Shimmer skeleton ── */
+.shimmer {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        #ede8e0 0%,
+        #f5f0ea 40%,
+        #ede8e0 80%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite linear;
+    border-radius: inherit;
+}
+
+@keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+
+/* Label over the preview image */
+.previewLabel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.72) 0%, transparent 100%);
+    padding: 1.5rem 1rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    animation: fadeIn 0.3s ease;
+}
+
+/* "← View garment" reset button */
+.resetBtn {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    background: rgba(255,255,255,0.88);
+    border: none;
+    border-radius: 2rem;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+    transition: background 0.2s ease, transform 0.15s ease;
+    animation: fadeIn 0.3s ease;
+}
+
+.resetBtn:hover {
+    background: rgba(255,255,255,1);
+    transform: scale(1.04);
+}
+
+.previewLabelSection {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.65);
+}
+
+.previewLabelName {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.previewLabelPrice {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #f0d060;
+    margin-top: 2px;
+}
+
+/* ── Empty state ── */
+.emptyState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: #b8a898;
+    text-align: center;
+    padding: 2rem;
+}
+
+.emptyIcon {
+    width: 56px;
+    height: 56px;
+    color: #c9a980;
+    opacity: 0.6;
+}
+
+.emptyText {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #8b7355;
+    margin: 0;
+}
+
+.emptySubText {
+    font-size: 0.78rem;
+    color: #b8a898;
+    margin: 0;
+}
+
+/* ── Selections summary ── */
+.selectionsPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.selectionTitle {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #9ca3af;
+    margin: 0 0 0.25rem;
+}
+
+.selectionRow {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.4rem 0.6rem;
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    border: 1.5px solid #f0ece6;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.selectionRowActive {
+    border-color: #c9a227;
+    background: #fffbf0;
+}
+
+.selectionThumb {
+    width: 38px;
+    height: 38px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    flex-shrink: 0;
+}
+
+.selectionMeta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.selectionSection {
+    font-size: 0.65rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.selectionName {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #111827;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.selectionPrice {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #c9a227;
+    flex-shrink: 0;
+}
+
+.hint {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    text-align: center;
+    font-style: italic;
+    margin: 0;
+}

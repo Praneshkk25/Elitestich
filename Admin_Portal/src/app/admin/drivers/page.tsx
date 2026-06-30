@@ -48,7 +48,7 @@ export default function DriversPage() {
 
         setSubmitting(true);
         try {
-            const response = await fetch('http://localhost:5000/api/users/register', {
+            const response = await fetch('$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/users/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ export default function DriversPage() {
                 return;
             }
 
-            const response = await fetch(`http://localhost:5000/api/users/${driver.authUid}`, {
+            const response = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/users/${driver.authUid}`, {
                 method: 'DELETE'
             });
             const data = await response.json();

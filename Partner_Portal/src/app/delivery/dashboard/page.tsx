@@ -86,7 +86,7 @@ export default function DeliveryDashboard() {
     const fetchOrders = async (id: string) => {
         try {
             setLoading(true);
-            const response = await fetch(`http://localhost:5000/api/orders?driverId=${id}`);
+            const response = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders?driverId=${id}`);
             const result = await response.json();
             if (result.success) {
                 setOrders(result.orders);
@@ -110,7 +110,7 @@ export default function DeliveryDashboard() {
                 }
             }
 
-            const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+            const response = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -262,9 +262,8 @@ export default function DeliveryDashboard() {
     );
 
     const deliveries = orders.filter(order => 
-        order.delivery_status === 'picked_up' || 
         order.delivery_status === 'out_for_delivery' || 
-        (order.fabricSource === 'store' && order.measurementMethod !== 'Sample cloth for measurement' && order.delivery_status === 'assigned' && order.status === 'ready_for_delivery')
+        (order.status === 'ready_for_delivery' && (order.delivery_status === 'assigned' || order.delivery_status === 'picked_up'))
     );
 
     const activeOrders = activeTab === 'pickups' ? pickups : deliveries;

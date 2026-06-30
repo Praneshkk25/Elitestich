@@ -8,6 +8,7 @@ export interface CartItem {
     price: number;
     image: string;
     category: string;
+    isCustom?: boolean; // true only for orders from the /customize page
 }
 
 interface CartContextType {

@@ -31,4 +31,12 @@ export const designs = [
         priceDisplay: '₹3,000+',
         basePrice: 3000
     },
+    {
+        id: '5',
+        title: 'Saree Pre Pleating',
+        category: 'Saree Pre Pleating',
+        image: '/images/Saree Pre Pleating/SareePrePleating.png',
+        priceDisplay: '₹800+',
+        basePrice: 800
+    },
 ];

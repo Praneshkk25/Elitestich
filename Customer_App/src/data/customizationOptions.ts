@@ -2,8 +2,9 @@
 export interface CustomizationOption {
     id: string;
     name: string;
-    image: string; // URL to an image/icon
-    price: number; // Additional cost
+    image: string;        // Thumbnail shown in the option picker
+    previewImage?: string; // Optional transparent PNG overlay for canvas preview
+    price: number;
 }
 
 export interface CustomizationCategory {
@@ -29,7 +30,7 @@ export const customizationOptions: ProductCustomization[] = [
                     { id: 'n2', name: 'U Neck', image: '/images/Blouse Design/U neck.jpeg', price: 0 },
                     { id: 'n3', name: 'Round Neck', image: '/images/Blouse Design/round.jpeg', price: 150 },
                     { id: 'n4', name: 'Square Neck', image: '/images/Blouse Design/square.jpeg', price: 0 },
-                    { id: 'n5', name: 'Boat Neck', image: '/images/Blouse Design/Boat neck.jpg', price: 200 },
+                    { id: 'n5', name: 'Boat Neck', image: '/images/Blouse Design/Boat neck.jpeg', price: 200 },
                 ]
             },
             {
@@ -148,6 +149,50 @@ export const customizationOptions: ProductCustomization[] = [
                     { id: 'hss1', name: 'Short Sleeve', image: 'https://placehold.co/100x100?text=Short', price: 0 },
                     { id: 'hss2', name: 'Elbow Sleeve', image: 'https://placehold.co/100x100?text=Elbow', price: 100 },
                     { id: 'hss3', name: 'Puff Sleeve', image: 'https://placehold.co/100x100?text=Puff', price: 200 },
+                ]
+            }
+        ]
+    },
+    {
+        category: 'Saree Pre Pleating',
+        sections: [
+            {
+                id: 'pleating_style',
+                name: 'Pleating Style',
+                options: [
+                    { id: 'pp1', name: 'Classic Box Pleats', image: 'https://placehold.co/100x100?text=Box+Pleats', price: 0 },
+                    { id: 'pp2', name: 'Knife Pleats', image: 'https://placehold.co/100x100?text=Knife+Pleats', price: 0 },
+                    { id: 'pp3', name: 'Inverted Pleats', image: 'https://placehold.co/100x100?text=Inverted', price: 100 },
+                    { id: 'pp4', name: 'Accordion Pleats', image: 'https://placehold.co/100x100?text=Accordion', price: 150 },
+                ]
+            },
+            {
+                id: 'drape_style',
+                name: 'Drape Style',
+                options: [
+                    { id: 'pd1', name: 'Nivi (Classic)', image: 'https://placehold.co/100x100?text=Nivi', price: 0 },
+                    { id: 'pd2', name: 'Bengali Style', image: 'https://placehold.co/100x100?text=Bengali', price: 100 },
+                    { id: 'pd3', name: 'Gujarati Style', image: 'https://placehold.co/100x100?text=Gujarati', price: 100 },
+                    { id: 'pd4', name: 'Coorg Style', image: 'https://placehold.co/100x100?text=Coorg', price: 150 },
+                ]
+            },
+            {
+                id: 'pleat_width',
+                name: 'Pleat Width',
+                options: [
+                    { id: 'pw1', name: 'Narrow (1 inch)', image: 'https://placehold.co/100x100?text=Narrow', price: 0 },
+                    { id: 'pw2', name: 'Medium (2 inch)', image: 'https://placehold.co/100x100?text=Medium', price: 50 },
+                    { id: 'pw3', name: 'Wide (3 inch)', image: 'https://placehold.co/100x100?text=Wide', price: 100 },
+                ]
+            },
+            {
+                id: 'border_finish',
+                name: 'Border Finishing',
+                options: [
+                    { id: 'bf1', name: 'No Finishing', image: 'https://placehold.co/100x100?text=Plain', price: 0 },
+                    { id: 'bf2', name: 'Fall & Lace', image: 'https://placehold.co/100x100?text=Fall+%26+Lace', price: 200 },
+                    { id: 'bf3', name: 'Iron Pressed Only', image: 'https://placehold.co/100x100?text=Pressed', price: 100 },
+                    { id: 'bf4', name: 'Stitched Pleats', image: 'https://placehold.co/100x100?text=Stitched', price: 250 },
                 ]
             }
         ]

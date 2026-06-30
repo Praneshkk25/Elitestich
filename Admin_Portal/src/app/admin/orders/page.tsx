@@ -24,6 +24,7 @@ interface Order {
     customizationNotes?: string;
     qc_photo?: string;
     qc_rejected_note?: string;
+    fabricSource?: string;
 }
 
 interface Driver {
@@ -32,6 +33,7 @@ interface Driver {
     personnel_number: string;
     current_location?: { lat: number, lng: number }; // Mock location
     distance?: number;
+    status?: string;
 }
 
 // Shop Location (Salem)
@@ -54,29 +56,60 @@ function deg2rad(deg: number) {
     return deg * (Math.PI / 180);
 }
 
+import dynamic from 'next/dynamic';
+
+const MapComponent = dynamic(() => import('@/components/MapComponent'), {
+    ssr: false,
+    loading: () => <div style={{ height: '300px', backgroundColor: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Loading live finder map...</div>
+});
+
+const getCustomerLocation = (orderId: string) => {
+    const hash = orderId.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+    const lat = 11.6643 + ((hash % 100) / 1000) - 0.05;
+    const lng = 78.1460 + (((hash * 13) % 100) / 1000) - 0.05;
+    return { lat, lng };
+};
+
+const getDriverLocation = (driverId: string) => {
+    const hash = driverId.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+    const lat = 11.6643 + ((hash % 120) / 1000) - 0.06;
+    const lng = 78.1460 + (((hash * 17) % 120) / 1000) - 0.06;
+    return { lat, lng };
+};
+
 export default function AdminOrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [drivers, setDrivers] = useState<Driver[]>([]);
     const [tailors, setTailors] = useState<Tailor[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedChatOrder, setSelectedChatOrder] = useState<Order | null>(null);
+    const [selectedQcOrder, setSelectedQcOrder] = useState<Order | null>(null);
+    const [mapOrder, setMapOrder] = useState<Order | null>(null);
 
     useEffect(() => {
         fetchDrivers();
         fetchTailors();
         fetchOrders();
+
+        const interval = setInterval(fetchOrders, 5000);
+        return () => clearInterval(interval);
     }, []);
 
     const fetchOrders = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/orders');
+            const response = await fetch('$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders');
             const data = await response.json();
             if (data.success) {
-                // Sort by createdAt descending locally since API doesn't sort yet
                 const sortedOrders = data.orders.sort((a: any, b: any) => {
-                    const timeA = a.createdAt?.seconds || new Date(a.createdAt).getTime() / 1000;
-                    const timeB = b.createdAt?.seconds || new Date(b.createdAt).getTime() / 1000;
-                    return timeB - timeA;
+                    const getVal = (o: any) => {
+                        if (o.created_at) return new Date(o.created_at).getTime();
+                        if (o.createdAt) {
+                            if (o.createdAt.seconds) return o.createdAt.seconds * 1000;
+                            return new Date(o.createdAt).getTime();
+                        }
+                        return 0;
+                    };
+                    return getVal(b) - getVal(a);
                 });
                 setOrders(sortedOrders);
             }
@@ -88,45 +121,45 @@ export default function AdminOrdersPage() {
     };
 
     const fetchDrivers = async () => {
-        const driversRef = collection(db, 'delivery_personnel');
-        const q = query(driversRef, where('status', '==', 'active'));
         try {
-            const snapshot = await getDocs(q);
-            const driversData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const response = await fetch('$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/users/drivers');
+            const data = await response.json();
+            if (data.success) {
+                const driversData = data.drivers;
+                const driversWithDistance = driversData.map((driver: any) => {
+                    const mockLat = SHOP_LOCATION.lat + (Math.random() - 0.5) * 0.1;
+                    const mockLng = SHOP_LOCATION.lng + (Math.random() - 0.5) * 0.1;
+                    const dist = calculateDistance(SHOP_LOCATION.lat, SHOP_LOCATION.lng, mockLat, mockLng);
 
-            const driversWithDistance = driversData.map((driver: any) => {
-                const mockLat = SHOP_LOCATION.lat + (Math.random() - 0.5) * 0.1;
-                const mockLng = SHOP_LOCATION.lng + (Math.random() - 0.5) * 0.1;
-                const dist = calculateDistance(SHOP_LOCATION.lat, SHOP_LOCATION.lng, mockLat, mockLng);
+                    return {
+                        ...driver,
+                        current_location: { lat: mockLat, lng: mockLng },
+                        distance: parseFloat(dist.toFixed(1))
+                    };
+                }).sort((a: any, b: any) => a.distance - b.distance); 
 
-                return {
-                    ...driver,
-                    current_location: { lat: mockLat, lng: mockLng },
-                    distance: parseFloat(dist.toFixed(1))
-                };
-            }).sort((a: any, b: any) => a.distance - b.distance); 
-
-            setDrivers(driversWithDistance as Driver[]);
+                setDrivers(driversWithDistance as Driver[]);
+            }
         } catch (e) {
-            console.error(e);
+            console.error('Error fetching drivers from API:', e);
         }
     };
 
     const fetchTailors = async () => {
-        const tailorsRef = collection(db, 'tailors');
-        const q = query(tailorsRef, where('status', '==', 'active'));
         try {
-            const snapshot = await getDocs(q);
-            const tailorsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Tailor[];
-            setTailors(tailorsData);
+            const response = await fetch('$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/users/tailors');
+            const data = await response.json();
+            if (data.success) {
+                setTailors(data.tailors as Tailor[]);
+            }
         } catch (e) {
-            console.error('Error fetching tailors', e);
+            console.error('Error fetching tailors from API:', e);
         }
     };
 
     const updateOrderStatus = async (orderId: string, newStatus: string) => {
         try {
-            await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+            await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: newStatus })
@@ -141,7 +174,7 @@ export default function AdminOrdersPage() {
         if (!driverId) return;
 
         try {
-            await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+            await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -159,7 +192,7 @@ export default function AdminOrdersPage() {
         if (!tailorId) return;
 
         try {
-            await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+            await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -179,7 +212,7 @@ export default function AdminOrdersPage() {
                 ? { status: 'ready_for_delivery', qc_rejected_note: null }
                 : { status: 'stitching_progress', qc_rejected_note: note || 'QC Rejected by admin.' };
 
-            await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+            await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
@@ -306,10 +339,11 @@ export default function AdminOrdersPage() {
                                     gap: '0.5rem',
                                     justifyContent: 'flex-end',
                                     marginTop: '0.5rem',
-                                    color: order.status === 'confirmed' || order.status === 'stitched' ? '#10b981' : '#eab308'
+                                    color: ['delivered', 'ready_for_delivery'].includes(order.status) ? '#10b981' :
+                                           ['pending_qc', 'finished'].includes(order.status) ? '#eab308' : '#3b82f6'
                                 }}>
-                                    {order.status === 'confirmed' || order.status === 'stitched' ? <CheckCircle size={16} /> : <Clock size={16} />}
-                                    <span style={{ textTransform: 'capitalize' }}>{order.status.replace(/_/g, ' ')}</span>
+                                    {['delivered', 'ready_for_delivery'].includes(order.status) ? <CheckCircle size={16} /> : <Clock size={16} />}
+                                    <span style={{ textTransform: 'capitalize', fontWeight: 'bold' }}>{order.status === 'pending_qc' ? 'Pending QC' : order.status.replace(/_/g, ' ')}</span>
                                 </div>
                             </div>
                         </div>
@@ -323,31 +357,21 @@ export default function AdminOrdersPage() {
                             flexWrap: 'wrap',
                             gap: '1.5rem'
                         }}>
-                            {/* Status Management */}
+                            {/* Status Display (Read-only for Admin, since tailoring process controls it) */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <span style={{ color: 'var(--text-muted)' }}>Status: </span>
-                                <select
-                                    value={order.status}
-                                    onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                                    style={{
-                                        padding: '0.5rem',
-                                        borderRadius: '4px',
-                                        backgroundColor: 'var(--background)',
-                                        color: 'var(--foreground)',
-                                        border: '1px solid var(--border)',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <option value="pending">Pending</option>
-                                    <option value="confirmed">Confirmed</option>
-                                    <option value="fabric_received">Fabric Checked</option>
-                                    <option value="pattern_cutting">Pattern Cutting</option>
-                                    <option value="stitching_progress">Stitched</option>
-                                    <option value="embroidery">Embroidery</option>
-                                    <option value="finished">Finished</option>
-                                    <option value="pending_qc">Pending QC</option>
-                                    <option value="ready_for_delivery">Ready for Delivery</option>
-                                </select>
+                                <span style={{
+                                    padding: '0.3rem 0.8rem',
+                                    borderRadius: '12px',
+                                    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                                    color: 'var(--primary)',
+                                    border: '1px solid var(--primary)',
+                                    fontWeight: 'bold',
+                                    fontSize: '0.85rem',
+                                    textTransform: 'capitalize'
+                                }}>
+                                    {order.status.replace(/_/g, ' ')}
+                                </span>
                             </div>
 
                             {/* Tailor Assignment */}
@@ -370,14 +394,43 @@ export default function AdminOrdersPage() {
                                         color: 'var(--foreground)',
                                         border: '1px solid var(--border)',
                                         minWidth: '200px',
+                                        opacity: (() => {
+                                            const needsPickup = ['pending', 'confirmed'].includes(order.status) &&
+                                                (order.fabricSource === 'own' || order.measurementMethod === 'Sample cloth for measurement');
+                                            const tailorDisabled = order.status === 'stitched' || 
+                                                order.status === 'ready_for_delivery' || 
+                                                order.status === 'shipped' || 
+                                                order.status === 'delivered' || 
+                                                (needsPickup && !order.assigned_to);
+                                            return tailorDisabled ? 0.5 : 1;
+                                        })()
                                     }}
                                     value={order.tailorId || ''}
                                     onChange={(e) => handleAssignTailor(order.id, e.target.value)}
-                                    disabled={order.status === 'stitched' || order.status === 'ready_for_delivery' || order.status === 'shipped' || order.status === 'delivered'}
-                                    title={order.status === 'stitched' ? "Already stitched" : "Assign Tailor"}
+                                    disabled={(() => {
+                                        const needsPickup = ['pending', 'confirmed'].includes(order.status) &&
+                                            (order.fabricSource === 'own' || order.measurementMethod === 'Sample cloth for measurement');
+                                        return order.status === 'stitched' || 
+                                            order.status === 'ready_for_delivery' || 
+                                            order.status === 'shipped' || 
+                                            order.status === 'delivered' || 
+                                            (needsPickup && !order.assigned_to);
+                                    })()}
+                                    title={(() => {
+                                        const needsPickup = ['pending', 'confirmed'].includes(order.status) &&
+                                            (order.fabricSource === 'own' || order.measurementMethod === 'Sample cloth for measurement');
+                                        if (needsPickup && !order.assigned_to) return "Assign pickup driver first";
+                                        if (order.status === 'stitched') return "Already stitched";
+                                        return "Assign Tailor";
+                                    })()}
                                 >
                                     <option value="">
-                                        {order.tailorId ? "Re-assign Tailor..." : "Assign Tailor..."}
+                                        {(() => {
+                                            const needsPickup = ['pending', 'confirmed'].includes(order.status) &&
+                                                (order.fabricSource === 'own' || order.measurementMethod === 'Sample cloth for measurement');
+                                            if (needsPickup && !order.assigned_to) return "Assign Pickup Driver First...";
+                                            return order.tailorId ? "Re-assign Tailor..." : "Assign Tailor...";
+                                        })()}
                                     </option>
                                     {tailors.map(tailor => {
                                         // Highlight if tailor has skill for this dress type
@@ -397,40 +450,131 @@ export default function AdminOrdersPage() {
                                     <Truck size={18} color="var(--text-muted)" />
                                     <span style={{
                                         fontWeight: 'bold',
-                                        color: order.delivery_status === 'delivered' ? '#10b981' :
+                                        color: order.status === 'pending_qc' ? '#eab308' :
+                                            order.delivery_status === 'delivered' ? '#10b981' :
                                             order.delivery_status === 'assigned' ? '#eab308' :
-                                                order.delivery_status === 'picked_up' ? '#3b82f6' : '#eab308',
+                                            order.delivery_status === 'picked_up' ? '#3b82f6' : '#eab308',
                                         textTransform: 'capitalize'
                                     }}>
-                                        {order.delivery_status ? order.delivery_status.replace(/_/g, ' ') : 'Pending'}
+                                        {order.status === 'pending_qc' ? 'Approval Needed' : (order.delivery_status ? order.delivery_status.replace(/_/g, ' ') : 'Pending')}
                                     </span>
                                 </div>
 
-                                <select
-                                    style={{
-                                        padding: '0.5rem',
-                                        borderRadius: '4px',
-                                        backgroundColor: 'var(--background)',
-                                        color: 'var(--foreground)',
-                                        border: '1px solid var(--border)',
-                                        minWidth: '200px',
-                                        opacity: order.status === 'ready_for_delivery' ? 1 : 0.5,
-                                        pointerEvents: order.status === 'ready_for_delivery' ? 'auto' : 'none'
-                                    }}
-                                    value={order.assigned_to || ''}
-                                    onChange={(e) => handleAssignDriver(order.id, e.target.value)}
-                                    disabled={order.delivery_status === 'delivered' || order.status !== 'ready_for_delivery'}
-                                    title={order.status !== 'ready_for_delivery' ? "Mark as 'Ready for Delivery' first" : "Assign Driver"}
-                                >
-                                    <option value="">
-                                        {order.status !== 'ready_for_delivery' ? "Wait for Stitching..." : "Assign Driver..."}
-                                    </option>
-                                    {drivers.map(driver => (
-                                        <option key={driver.id} value={driver.id}>
-                                            {driver.name} ({driver.distance} km away)
-                                        </option>
-                                    ))}
-                                </select>
+                                {order.status === 'pending_qc' ? (
+                                    <button
+                                        onClick={() => setSelectedQcOrder(order)}
+                                        style={{
+                                            padding: '0.5rem 1rem',
+                                            borderRadius: '4px',
+                                            backgroundColor: 'var(--primary)',
+                                            color: '#000',
+                                            border: 'none',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.25rem',
+                                            boxShadow: '0 2px 8px rgba(212, 175, 55, 0.3)'
+                                        }}
+                                    >
+                                        🔍 Review & Approve QC
+                                    </button>
+                                ) : (
+                                    (() => {
+                                        const needsPickup = ['pending', 'confirmed'].includes(order.status) &&
+                                            (order.fabricSource === 'own' || order.measurementMethod === 'Sample cloth for measurement');
+                                        
+                                        const canAssignDriver = order.status === 'ready_for_delivery' || 
+                                            (needsPickup && ['pending', 'assigned'].includes(order.delivery_status));
+                                        
+                                        const selectPlaceholder = () => {
+                                            if (order.delivery_status === 'delivered') return "Delivered to Customer";
+                                            if (order.status === 'ready_for_delivery') return order.assigned_to ? "Re-assign Delivery..." : "Assign Delivery Driver...";
+                                            if (needsPickup) {
+                                                if (order.delivery_status === 'picked_up') return "Fabric Picked Up";
+                                                return order.assigned_to ? "Re-assign Pickup..." : "Assign Pickup Driver...";
+                                            }
+                                            if (['pending', 'confirmed'].includes(order.status)) return "No Pickup Required";
+                                            return "Wait for Stitching...";
+                                        };
+
+                                        return (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <select
+                                                        style={{
+                                                            padding: '0.5rem',
+                                                            borderRadius: '4px',
+                                                            backgroundColor: 'var(--background)',
+                                                            color: 'var(--foreground)',
+                                                            border: '1px solid var(--border)',
+                                                            minWidth: '200px',
+                                                            opacity: canAssignDriver ? 1 : 0.5,
+                                                            pointerEvents: canAssignDriver ? 'auto' : 'none'
+                                                        }}
+                                                        value={order.assigned_to || ''}
+                                                        onChange={(e) => handleAssignDriver(order.id, e.target.value)}
+                                                        disabled={!canAssignDriver}
+                                                        title={selectPlaceholder()}
+                                                    >
+                                                        <option value="">
+                                                            {selectPlaceholder()}
+                                                        </option>
+                                                        {drivers
+                                                            .map(driver => {
+                                                                const custLoc = getCustomerLocation(order.id);
+                                                                const driverLoc = getDriverLocation(driver.id);
+                                                                const dist = calculateDistance(custLoc.lat, custLoc.lng, driverLoc.lat, driverLoc.lng);
+                                                                return { ...driver, distance: dist };
+                                                            })
+                                                            .sort((a, b) => a.distance - b.distance)
+                                                            .map(driver => (
+                                                                <option key={driver.id} value={driver.id}>
+                                                                    {driver.name} ({driver.distance.toFixed(1)} km from customer - {driver.status || 'active'})
+                                                                </option>
+                                                            ))
+                                                        }
+                                                    </select>
+                                                    
+                                                    <button
+                                                        onClick={() => setMapOrder(order)}
+                                                        style={{
+                                                            padding: '0.5rem 0.75rem',
+                                                            borderRadius: '4px',
+                                                            backgroundColor: 'rgba(212, 175, 55, 0.1)',
+                                                            border: '1px solid var(--primary)',
+                                                            color: 'var(--primary)',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontWeight: 'bold',
+                                                            fontSize: '0.85rem'
+                                                        }}
+                                                        title="Show Nearby Drivers on Map"
+                                                    >
+                                                        🗺️ Map
+                                                    </button>
+                                                </div>
+                                                
+                                                {(canAssignDriver || order.assigned_to) && (
+                                                    <div style={{
+                                                        fontSize: '0.75rem',
+                                                        color: 'var(--text-muted)',
+                                                        marginTop: '0.25rem',
+                                                        display: 'flex',
+                                                        gap: '0.5rem',
+                                                        flexWrap: 'wrap'
+                                                    }}>
+                                                        <span>📍 Cust: ({getCustomerLocation(order.id).lat.toFixed(4)}, {getCustomerLocation(order.id).lng.toFixed(4)})</span>
+                                                        {order.assigned_to && (
+                                                            <span style={{ color: 'var(--primary)' }}>🚚 Driver: ({getDriverLocation(order.assigned_to).lat.toFixed(4)}, {getDriverLocation(order.assigned_to).lng.toFixed(4)})</span>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                         );
+                                     })())}
                             </div>
 
                             {/* QC Approved status display */}
@@ -438,78 +582,6 @@ export default function AdminOrdersPage() {
                                 <div style={{ width: '100%', marginBottom: '0.75rem', fontSize: '0.9rem' }}>
                                     <span style={{ color: 'var(--text-muted)' }}>Approved QC Photo: </span>
                                     <a href={order.qc_photo} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', fontWeight: 'bold', textDecoration: 'underline' }}>View Image</a>
-                                </div>
-                            )}
-
-                            {/* QC Action Section */}
-                            {order.status === 'pending_qc' && (
-                                <div style={{
-                                    width: '100%',
-                                    padding: '1.25rem',
-                                    borderRadius: '8px',
-                                    backgroundColor: 'rgba(234, 179, 8, 0.08)',
-                                    border: '1px solid rgba(234, 179, 8, 0.3)',
-                                    fontSize: '0.9rem',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: '1rem',
-                                    marginBottom: '1rem'
-                                }}>
-                                    <h4 style={{ color: '#eab308', margin: 0, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        ⚠️ Quality Check Verification Pending
-                                    </h4>
-
-                                    {order.qc_photo ? (
-                                        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                                            <img 
-                                                src={order.qc_photo} 
-                                                alt="QC Completed Garment" 
-                                                style={{ maxHeight: '180px', borderRadius: '6px', border: '1px solid var(--border)', objectFit: 'cover' }} 
-                                            />
-                                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                                <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-                                                    Please review the tailor's completed garment photo before approving driver assignment and final shipment.
-                                                </p>
-                                                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                                    <button
-                                                        onClick={() => handleQcAction(order.id, true)}
-                                                        style={{
-                                                            padding: '0.5rem 1rem',
-                                                            borderRadius: '4px',
-                                                            backgroundColor: '#10b981',
-                                                            color: '#000',
-                                                            border: 'none',
-                                                            fontWeight: 'bold',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        Approve QC
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            const note = prompt('Enter rejection feedback for the tailor:');
-                                                            if (note !== null) {
-                                                                    handleQcAction(order.id, false, note || undefined);
-                                                            }
-                                                        }}
-                                                        style={{
-                                                            padding: '0.5rem 1rem',
-                                                            borderRadius: '4px',
-                                                            backgroundColor: '#ef4444',
-                                                            color: '#fff',
-                                                            border: 'none',
-                                                            fontWeight: 'bold',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        Reject QC
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No completed garment photo uploaded yet.</p>
-                                    )}
                                 </div>
                             )}
 
@@ -636,6 +708,202 @@ export default function AdminOrdersPage() {
                                 currentUserId="admin"
                                 currentUserName="Admin Supervisor"
                             />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* QC Approval Modal */}
+            {selectedQcOrder && (() => {
+                const activeQcOrder = orders.find(o => o.id === selectedQcOrder.id) || selectedQcOrder;
+                return (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: 'rgba(0,0,0,0.85)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000,
+                        padding: '1rem'
+                    }}>
+                        <div style={{
+                            backgroundColor: 'var(--secondary)',
+                            borderRadius: '12px',
+                            width: '100%',
+                            maxWidth: '600px',
+                            maxHeight: '90vh',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            border: '1px solid var(--primary)',
+                            overflow: 'hidden',
+                            boxShadow: '0 8px 32px rgba(212, 175, 55, 0.2)'
+                        }}>
+                            <div style={{
+                                padding: '1.5rem',
+                                borderBottom: '1px solid var(--border)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                backgroundColor: 'var(--background)'
+                            }}>
+                                <div>
+                                    <h2 style={{ color: 'var(--primary)', margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <span>👑</span> Quality Check (QC) Approval
+                                    </h2>
+                                    <p style={{ color: 'var(--text-muted)', margin: '0.25rem 0 0 0', fontSize: '0.85rem' }}>
+                                        Order #{activeQcOrder.id.slice(0, 8)} - {activeQcOrder.design_title}
+                                    </p>
+                                </div>
+                                <button 
+                                    onClick={() => setSelectedQcOrder(null)}
+                                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                                >
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            
+                            <div style={{ flexGrow: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                <p style={{ color: 'var(--foreground)', margin: 0, fontSize: '0.95rem', lineHeight: '1.5' }}>
+                                    Review the tailor's completed garment preview below. Approving will mark the order as <strong style={{ color: '#10b981' }}>Ready for Delivery</strong> and enable driver assignment.
+                                </p>
+
+                                {activeQcOrder.qc_photo ? (
+                                    <div style={{ display: 'flex', justifyContent: 'center', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden', backgroundColor: 'var(--background)' }}>
+                                        <img 
+                                            src={activeQcOrder.qc_photo} 
+                                            alt="QC Preview" 
+                                            style={{ maxHeight: '350px', maxWidth: '100%', objectFit: 'contain' }} 
+                                        />
+                                    </div>
+                                ) : (
+                                    <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: 'var(--background)', borderRadius: '8px', border: '1px dashed var(--border)' }}>
+                                        <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No completed garment photo uploaded yet.</span>
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                    <button
+                                        onClick={async () => {
+                                            await handleQcAction(activeQcOrder.id, true);
+                                            setSelectedQcOrder(null);
+                                        }}
+                                        disabled={!activeQcOrder.qc_photo}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.75rem 1.5rem',
+                                            borderRadius: '6px',
+                                            backgroundColor: '#10b981',
+                                            color: '#000',
+                                            border: 'none',
+                                            fontWeight: 'bold',
+                                            cursor: activeQcOrder.qc_photo ? 'pointer' : 'not-allowed',
+                                            opacity: activeQcOrder.qc_photo ? 1 : 0.5,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.5rem'
+                                        }}
+                                    >
+                                        ✓ Approve & Enable Delivery
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            const note = prompt('Enter rejection feedback explaining why this garment was rejected:');
+                                            if (note !== null) {
+                                                await handleQcAction(activeQcOrder.id, false, note || undefined);
+                                                setSelectedQcOrder(null);
+                                            }
+                                        }}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.75rem 1.5rem',
+                                            borderRadius: '6px',
+                                            backgroundColor: '#ef4444',
+                                            color: '#fff',
+                                            border: 'none',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.5rem'
+                                        }}
+                                    >
+                                        ✗ Reject & Send Back
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* Finder Map Modal */}
+            {mapOrder && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: '1rem'
+                }}>
+                    <div style={{
+                        backgroundColor: 'var(--secondary)',
+                        borderRadius: '12px',
+                        width: '100%',
+                        maxWidth: '800px',
+                        height: '600px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        border: '1px solid var(--primary)',
+                        overflow: 'hidden',
+                        boxShadow: '0 8px 32px rgba(212, 175, 55, 0.2)'
+                    }}>
+                        <div style={{
+                            padding: '1.5rem',
+                            borderBottom: '1px solid var(--border)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            backgroundColor: 'var(--background)'
+                        }}>
+                            <div>
+                                <h2 style={{ color: 'var(--primary)', margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span>🗺️</span> Driver Finder Map
+                                </h2>
+                                <p style={{ color: 'var(--text-muted)', margin: '0.25rem 0 0 0', fontSize: '0.85rem' }}>
+                                    Order #{mapOrder.id.slice(0, 8)} - Customer: {mapOrder.customer_name}
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setMapOrder(null)}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div style={{ flexGrow: 1, padding: '1rem', backgroundColor: 'var(--background)' }}>
+                            <MapComponent locations={[
+                                {
+                                    lat: getCustomerLocation(mapOrder.id).lat,
+                                    lng: getCustomerLocation(mapOrder.id).lng,
+                                    title: `Customer: ${mapOrder.customer_name}`,
+                                    description: `Fabric / Delivery point`
+                                },
+                                ...drivers.map(driver => {
+                                    const loc = getDriverLocation(driver.id);
+                                    return {
+                                        lat: loc.lat,
+                                        lng: loc.lng,
+                                        title: `Driver: ${driver.name}`,
+                                        description: `Personnel ID: ${driver.personnel_number}`
+                                    };
+                                })
+                            ]} />
                         </div>
                     </div>
                 </div>

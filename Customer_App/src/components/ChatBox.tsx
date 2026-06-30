@@ -74,6 +74,8 @@ export default function ChatBox({ orderId, currentUserRole, currentUserId, curre
                 });
             }
             initialLoad = false;
+        }, (error) => {
+            console.warn("Gracefully handled snapshot listener warning:", error.message || error);
         });
 
         return () => unsubscribe();

@@ -13,12 +13,12 @@ export default function Footer() {
             <div className={`container ${styles.container}`}>
                 <div className={styles.section}>
                     <Link href="/" className={styles.logo}>
-                        ELITE STITCH<span className={styles.logoAccent}> WORLD</span>
+                        ELITE<span className={styles.logoAccent}> WORLD</span>
                     </Link>
                     <br />
                     <br />
                     <p>
-                        Elite Stitch World brings the luxury of bespoke tailoring to your doorstep.
+                        Elite World brings the luxury of bespoke tailoring to your doorstep.
                         Perfect fit, premium fabrics, and personalized service.
                     </p>
                     <div className={styles.socials}>
@@ -45,7 +45,7 @@ export default function Footer() {
             </div>
             <div className={styles.bottom}>
                 <div className="container">
-                    <p>&copy; {new Date().getFullYear()} Elite Stitch World. {t('footer.rights')}</p>
+                    <p>&copy; {new Date().getFullYear()} Elite World. {t('footer.rights')}</p>
                 </div>
             </div>
         </footer>

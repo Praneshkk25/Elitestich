@@ -35,7 +35,7 @@ export default function LiveMapPage() {
 
     const fetchLocations = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/orders');
+            const response = await fetch('$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders');
             const result = await response.json();
             if (result.success && result.orders) {
                 const mappedLocations = result.orders.map((order: any) => {

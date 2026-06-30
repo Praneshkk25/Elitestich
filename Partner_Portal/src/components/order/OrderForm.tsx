@@ -76,7 +76,7 @@ function OrderFormContent() {
         };
 
         try {
-            const endpoint = paymentMethod === 'online' ? 'http://localhost:5000/api/checkout' : 'http://localhost:5000/api/orders';
+            const endpoint = paymentMethod === 'online' ? '$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/checkout' : '$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders';
 
             const response = await fetch(endpoint, {
                 method: 'POST',

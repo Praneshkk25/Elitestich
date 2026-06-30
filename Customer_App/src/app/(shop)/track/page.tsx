@@ -2,12 +2,32 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, Package, Scissors, Truck, CheckCircle, AlertCircle } from 'lucide-react';
+import { Search, Package, Scissors, Truck, CheckCircle, AlertCircle, MapPin } from 'lucide-react';
 import styles from './track.module.css';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import ReviewModal from '@/components/ReviewModal';
 import ChatBox from '@/components/ChatBox';
+import dynamic from 'next/dynamic';
+
+const MapComponent = dynamic(() => import('@/components/MapComponent'), {
+    ssr: false,
+    loading: () => <div style={{ height: '300px', backgroundColor: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>Loading live tracker map...</div>
+});
+
+const getCustomerLocation = (orderId: string) => {
+    const hash = orderId.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+    const lat = 11.6643 + ((hash % 100) / 1000) - 0.05;
+    const lng = 78.1460 + (((hash * 13) % 100) / 1000) - 0.05;
+    return { lat, lng };
+};
+
+const getDriverLocation = (driverId: string) => {
+    const hash = driverId.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+    const lat = 11.6643 + ((hash % 120) / 1000) - 0.06;
+    const lng = 78.1460 + (((hash * 17) % 120) / 1000) - 0.06;
+    return { lat, lng };
+};
 
 function TrackPageContent() {
     const searchParams = useSearchParams();
@@ -16,6 +36,30 @@ function TrackPageContent() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    const [driverInfo, setDriverInfo] = useState<any>(null);
+
+    useEffect(() => {
+        if (order && order.assigned_to) {
+            fetchDriverInfo(order.assigned_to);
+        } else {
+            setDriverInfo(null);
+        }
+    }, [order]);
+
+    const fetchDriverInfo = async (driverId: string) => {
+        try {
+            const response = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/users/drivers/${driverId}`);
+            const data = await response.json();
+            if (data.success && data.driver) {
+                setDriverInfo(data.driver);
+            } else {
+                setDriverInfo(null);
+            }
+        } catch (e) {
+            console.error('Error fetching driver info:', e);
+            setDriverInfo(null);
+        }
+    };
 
     useEffect(() => {
         const idFromUrl = searchParams.get('order_id');
@@ -32,7 +76,7 @@ function TrackPageContent() {
     const verifyPayment = async (sessionId: string, orderId: string) => {
         setLoading(true);
         try {
-            const response = await fetch(`http://localhost:5000/api/verify-payment`, {
+            const response = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/verify-payment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sessionId }),
@@ -285,6 +329,68 @@ function TrackPageContent() {
                                     <p>Your garment is on its way to you.</p>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Live Tracking Map Section */}
+                        <div style={{ marginTop: '3rem' }}>
+                            <h3 style={{ marginBottom: '1rem', color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <MapPin size={22} color="var(--primary)" /> Live Tracking & Location Details
+                            </h3>
+                            <div style={{ height: '350px', width: '100%', marginBottom: '1rem', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                                <MapComponent locations={
+                                    driverInfo 
+                                        ? [
+                                            { lat: getDriverLocation(order.assigned_to).lat, lng: getDriverLocation(order.assigned_to).lng, title: `Driver: ${driverInfo.name}`, description: 'Your delivery partner is on the way!' },
+                                            { lat: getCustomerLocation(order.id).lat, lng: getCustomerLocation(order.id).lng, title: 'Your Location', description: 'Delivery address location marker' }
+                                          ]
+                                        : [
+                                            { lat: getCustomerLocation(order.id).lat, lng: getCustomerLocation(order.id).lng, title: 'Your Location', description: 'Delivery address location marker' }
+                                          ]
+                                } />
+                            </div>
+                            
+                            {driverInfo ? (
+                                <div style={{ 
+                                    padding: '1.25rem', 
+                                    borderRadius: '8px', 
+                                    backgroundColor: 'rgba(212, 175, 55, 0.05)', 
+                                    border: '1px solid rgba(212, 175, 55, 0.2)',
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
+                                    gap: '1rem',
+                                    justifyContent: 'space-between'
+                                }}>
+                                    <div>
+                                        <p style={{ margin: 0, fontWeight: 'bold', color: 'var(--foreground)', fontSize: '1rem' }}>Assigned Driver: {driverInfo.name}</p>
+                                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Personnel Number: {driverInfo.personnel_number} | Contact: {driverInfo.phone || '9876543210'}</p>
+                                    </div>
+                                    <div style={{ 
+                                        padding: '0.3rem 0.8rem', 
+                                        borderRadius: '12px', 
+                                        backgroundColor: 'rgba(16, 185, 129, 0.15)', 
+                                        color: '#10b981',
+                                        fontSize: '0.85rem',
+                                        fontWeight: 'bold',
+                                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                                        textTransform: 'capitalize'
+                                    }}>
+                                        Driver Status: {driverInfo.status || 'Active'}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div style={{ 
+                                    padding: '1rem', 
+                                    borderRadius: '8px', 
+                                    backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+                                    border: '1px solid var(--border)',
+                                    fontSize: '0.9rem',
+                                    color: 'var(--text-muted)',
+                                    textAlign: 'center'
+                                }}>
+                                    A driver will be assigned to pick up your fabric or deliver the completed garment.
+                                </div>
+                            )}
                         </div>
 
                         {/* Leave a Review Button for Delivered Orders */}

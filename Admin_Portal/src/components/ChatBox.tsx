@@ -34,49 +34,69 @@ export default function ChatBox({ orderId, currentUserRole, currentUserId, curre
             Notification.requestPermission();
         }
 
-        const q = query(
-            collection(db, `orders/${orderId}/messages`),
-            orderBy('timestamp', 'asc')
-        );
+        if (currentUserRole === 'admin') {
+            const fetchMessages = async () => {
+                try {
+                    const res = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}/messages`);
+                    const data = await res.json();
+                    if (data.success) {
+                        setMessages(data.messages);
+                    }
+                } catch (error) {
+                    console.error("Error polling messages:", error);
+                }
+            };
 
-        let initialLoad = true;
+            fetchMessages();
+            const interval = setInterval(fetchMessages, 3000);
+            return () => clearInterval(interval);
+        } else {
+            const q = query(
+                collection(db, `orders/${orderId}/messages`),
+                orderBy('timestamp', 'asc')
+            );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const msgs: ChatMessage[] = [];
-            snapshot.forEach((doc) => {
-                msgs.push({ id: doc.id, ...doc.data() } as ChatMessage);
-            });
-            setMessages(msgs);
-            
-            // Handle notifications for new messages after initial load
-            if (!initialLoad && snapshot.docChanges().length > 0) {
-                snapshot.docChanges().forEach((change) => {
-                    if (change.type === 'added') {
-                        const newMsg = change.doc.data() as ChatMessage;
-                        // Don't notify for our own messages
-                        if (newMsg.senderId !== currentUserId) {
-                            if ('Notification' in window && Notification.permission === 'granted') {
-                                const senderDisplay = newMsg.senderRole === 'tailor' && currentUserRole === 'customer' 
-                                    ? 'Your Tailor' 
-                                    : newMsg.senderName;
+            let initialLoad = true;
+
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const msgs: ChatMessage[] = [];
+                snapshot.forEach((doc) => {
+                    msgs.push({ id: doc.id, ...doc.data() } as ChatMessage);
+                });
+                setMessages(msgs);
+                
+                // Handle notifications for new messages after initial load
+                if (!initialLoad && snapshot.docChanges().length > 0) {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') {
+                            const newMsg = change.doc.data() as ChatMessage;
+                            // Don't notify for our own messages
+                            if (newMsg.senderId !== currentUserId) {
+                                if ('Notification' in window && Notification.permission === 'granted') {
+                                    const senderDisplay = newMsg.senderRole === 'tailor' && currentUserRole === 'customer' 
+                                        ? 'Your Tailor' 
+                                        : newMsg.senderName;
+                                        
+                                    let bodyText = newMsg.text;
+                                    if (newMsg.imageUrl) bodyText = 'Sent an image';
+                                    if (newMsg.audioUrl) bodyText = 'Sent a voice message';
                                     
-                                let bodyText = newMsg.text;
-                                if (newMsg.imageUrl) bodyText = 'Sent an image';
-                                if (newMsg.audioUrl) bodyText = 'Sent a voice message';
-                                
-                                new Notification(`New message from ${senderDisplay}`, {
-                                    body: bodyText,
-                                    icon: '/favicon.ico' // fallback icon
-                                });
+                                    new Notification(`New message from ${senderDisplay}`, {
+                                        body: bodyText,
+                                        icon: '/favicon.ico' // fallback icon
+                                    });
+                                }
                             }
                         }
-                    }
-                });
-            }
-            initialLoad = false;
-        });
+                    });
+                }
+                initialLoad = false;
+            }, (error) => {
+                console.warn("Gracefully handled snapshot listener warning:", error.message || error);
+            });
 
-        return () => unsubscribe();
+            return () => unsubscribe();
+        }
     }, [orderId, currentUserId, currentUserRole]);
 
     // Auto-scroll to bottom when messages change
@@ -92,13 +112,34 @@ export default function ChatBox({ orderId, currentUserRole, currentUserId, curre
         setNewMessage(''); // optimistic clear
 
         try {
-            await addDoc(collection(db, `orders/${orderId}/messages`), {
-                senderId: currentUserId,
-                senderName: currentUserName,
-                senderRole: currentUserRole,
-                text: textToSend,
-                timestamp: serverTimestamp(),
-            });
+            if (currentUserRole === 'admin') {
+                const response = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderId: currentUserId,
+                        senderName: currentUserName,
+                        senderRole: currentUserRole,
+                        text: textToSend
+                    })
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Failed to send');
+
+                const res = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}/messages`);
+                const messagesData = await res.json();
+                if (messagesData.success) {
+                    setMessages(messagesData.messages);
+                }
+            } else {
+                await addDoc(collection(db, `orders/${orderId}/messages`), {
+                    senderId: currentUserId,
+                    senderName: currentUserName,
+                    senderRole: currentUserRole,
+                    text: textToSend,
+                    timestamp: serverTimestamp(),
+                });
+            }
         } catch (error) {
             console.error('Error sending message:', error);
             alert('Failed to send message');
@@ -115,14 +156,36 @@ export default function ChatBox({ orderId, currentUserRole, currentUserId, curre
             const uploadTask = await uploadBytesResumable(fileRef, file);
             const downloadUrl = await getDownloadURL(uploadTask.ref);
 
-            await addDoc(collection(db, `orders/${orderId}/messages`), {
-                senderId: currentUserId,
-                senderName: currentUserName,
-                senderRole: currentUserRole,
-                text: '',
-                imageUrl: downloadUrl,
-                timestamp: serverTimestamp(),
-            });
+            if (currentUserRole === 'admin') {
+                const response = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderId: currentUserId,
+                        senderName: currentUserName,
+                        senderRole: currentUserRole,
+                        text: '',
+                        imageUrl: downloadUrl
+                    })
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Failed to send image');
+
+                const res = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}/messages`);
+                const messagesData = await res.json();
+                if (messagesData.success) {
+                    setMessages(messagesData.messages);
+                }
+            } else {
+                await addDoc(collection(db, `orders/${orderId}/messages`), {
+                    senderId: currentUserId,
+                    senderName: currentUserName,
+                    senderRole: currentUserRole,
+                    text: '',
+                    imageUrl: downloadUrl,
+                    timestamp: serverTimestamp(),
+                });
+            }
         } catch (error) {
             console.error('Error uploading image:', error);
             alert('Failed to upload image');
@@ -175,14 +238,36 @@ export default function ChatBox({ orderId, currentUserRole, currentUserId, curre
             const uploadTask = await uploadBytesResumable(fileRef, audioBlob);
             const downloadUrl = await getDownloadURL(uploadTask.ref);
 
-            await addDoc(collection(db, `orders/${orderId}/messages`), {
-                senderId: currentUserId,
-                senderName: currentUserName,
-                senderRole: currentUserRole,
-                text: '',
-                audioUrl: downloadUrl,
-                timestamp: serverTimestamp(),
-            });
+            if (currentUserRole === 'admin') {
+                const response = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}/messages`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        senderId: currentUserId,
+                        senderName: currentUserName,
+                        senderRole: currentUserRole,
+                        text: '',
+                        audioUrl: downloadUrl
+                    })
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Failed to send audio');
+
+                const res = await fetch(`$\{process.env.NEXT_PUBLIC_API_URL || "${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}"\}/api/orders/${orderId}/messages`);
+                const messagesData = await res.json();
+                if (messagesData.success) {
+                    setMessages(messagesData.messages);
+                }
+            } else {
+                await addDoc(collection(db, `orders/${orderId}/messages`), {
+                    senderId: currentUserId,
+                    senderName: currentUserName,
+                    senderRole: currentUserRole,
+                    text: '',
+                    audioUrl: downloadUrl,
+                    timestamp: serverTimestamp(),
+                });
+            }
         } catch (error) {
             console.error('Error uploading audio:', error);
             alert('Failed to send voice message');

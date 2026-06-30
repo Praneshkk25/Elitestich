@@ -37,18 +37,14 @@ export default function Navbar() {
         <nav className={styles.navbar}>
             <div className={`container ${styles.navContainer}`}>
                 <Link href="/" className={styles.logo}>
-                    <div className={styles.logoIcon}>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <path d="M4.5 9.5L14.5 19.5" strokeLinecap="round" />
-                            <path d="M16.5 7.5C16.5 7.5 19 5 21 3C21 3 22 4 21 6C19 8 16.5 10.5 16.5 10.5" strokeLinecap="round" />
-                            <path d="M19.5 4.5L15.5 8.5" strokeLinecap="round" />
-                            <path d="M13.5 10.5L9.5 14.5" stroke="var(--primary)" strokeWidth="2" />
-                            <path d="M2 22L4.5 19.5" strokeLinecap="round" />
-                        </svg>
-                    </div>
+                    <img
+                        src="/images/logo.jpeg"
+                        alt="Elite World Logo"
+                        className={styles.logoImage}
+                    />
                     <div className={styles.logoText}>
-                        <span className={styles.logoMain}>ELITE STITCH</span>
-                        <span className={styles.logoSub}>WORLD</span>
+                        <span className={styles.logoMain}>Elite World</span>
+                        <span className={styles.logoSub}>Where Style Begins With a Stitch</span>
                     </div>
                 </Link>
 

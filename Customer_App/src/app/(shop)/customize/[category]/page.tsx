@@ -31,6 +31,7 @@ export default async function CustomizePage({ params }: PageProps) {
         <CustomizationInterface
             customizationData={customizationData}
             initialBasePrice={basePrice}
+            baseImage={designInfo?.image ?? `https://placehold.co/400x533?text=${encodeURIComponent(decodedCategory)}`}
         />
     );
 }

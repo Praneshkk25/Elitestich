@@ -7,15 +7,15 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
-    title: "Elite Stitch World | Premium Bespoke Tailoring",
+    title: "Elite World | Premium Bespoke Tailoring",
     description: "Custom garments tailored exclusively for you. Browse designs, order custom fits, and track your delivery.",
     keywords: ["tailoring", "bespoke", "custom suit", "saree blouse", "lehenga", "salem tailoring"],
-    authors: [{ name: "Elite Stitch World" }],
+    authors: [{ name: "Elite World" }],
     openGraph: {
-        title: "Elite Stitch World | Premium Bespoke Tailoring",
+        title: "Elite World | Premium Bespoke Tailoring",
         description: "Custom garments tailored exclusively for you. Browse designs, order custom fits, and track your delivery.",
         url: 'https://elitestitchworld.com',
-        siteName: 'Elite Stitch World',
+        siteName: 'Elite World',
         images: [
             {
                 url: '/og-image.jpg',
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Elite Stitch World | Premium Bespoke Tailoring',
+        title: 'Elite World | Premium Bespoke Tailoring',
         description: 'Custom garments tailored exclusively for you. Browse designs, order custom fits, and track your delivery.',
         images: ['/og-image.jpg'],
     },

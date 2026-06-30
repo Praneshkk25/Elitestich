@@ -1,102 +1,113 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { ProductCustomization, CustomizationOption } from '@/data/customizationOptions';
 import { useCart } from '@/contexts/CartContext';
+import ProductPreview from '@/components/ProductPreview';
 import styles from './customize.module.css';
-import { ArrowLeft, ShoppingBag } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 interface CustomizationInterfaceProps {
     customizationData: ProductCustomization;
     initialBasePrice?: number;
+    baseImage: string;
 }
 
-export default function CustomizationInterface({ customizationData, initialBasePrice = 1500 }: CustomizationInterfaceProps) {
+export default function CustomizationInterface({
+    customizationData,
+    initialBasePrice = 1500,
+    baseImage,
+}: CustomizationInterfaceProps) {
     const router = useRouter();
     const { addToCart } = useCart();
 
-    // State to track selected option ID for each section ID
-    const [selections, setSelections] = useState<Record<string, CustomizationOption>>({});
-
-    // Initialize with first option of each section if not selected
-    useState(() => {
-        const initialSelections: Record<string, CustomizationOption> = {};
-        customizationData.sections.forEach(section => {
+    // Which option is selected per section (for price calc & highlight)
+    const [selections, setSelections] = useState<Record<string, CustomizationOption>>(() => {
+        const init: Record<string, CustomizationOption> = {};
+        customizationData.sections.forEach((section) => {
             if (section.options.length > 0) {
-                initialSelections[section.id] = section.options[0];
+                init[section.id] = section.options[0];
             }
         });
-        setSelections(initialSelections);
+        return init;
     });
 
-    const handleSelect = (sectionId: string, option: CustomizationOption) => {
-        setSelections(prev => ({
-            ...prev,
-            [sectionId]: option
-        }));
+    // What the preview pane is currently showing
+    const [previewSrc, setPreviewSrc] = useState<string>(baseImage);
+    const [previewLabel, setPreviewLabel] = useState<string>('');
+    const [previewSublabel, setPreviewSublabel] = useState<string>('');
+    const [isBase, setIsBase] = useState(true);
+
+    const handleSelect = (sectionId: string, sectionName: string, option: CustomizationOption) => {
+        setSelections((prev) => ({ ...prev, [sectionId]: option }));
+        // Update the preview to show this option's image
+        setPreviewSrc(option.image);
+        setPreviewLabel(option.name);
+        setPreviewSublabel(sectionName);
+        setIsBase(false);
     };
 
-    const calculateTotal = () => {
-        const extras = Object.values(selections).reduce((acc, opt) => acc + opt.price, 0);
-        return initialBasePrice + extras;
+    const resetPreview = () => {
+        setPreviewSrc(baseImage);
+        setPreviewLabel('');
+        setPreviewSublabel('');
+        setIsBase(true);
     };
+
+    const calculateTotal = () =>
+        initialBasePrice +
+        Object.values(selections).reduce((acc, opt) => acc + opt.price, 0);
 
     const handleAddToCart = () => {
-        // Construct a descriptive title
-        const selectedOptionsStr = Object.values(selections).map(s => s.name).join(', ');
-
         addToCart({
-            id: `${customizationData.category}-${Date.now()}`, // unique ID for cart item
-            title: `${customizationData.category} (Custom)`,
+            id: `${customizationData.category}-${Date.now()}`,
+            title: customizationData.category,
             category: customizationData.category,
-            image: '/images/placeholder-garment.png', // This should be dynamic based on selection ideally
+            image: baseImage,
             price: calculateTotal(),
         });
         alert('Added to cart!');
-        router.push('/cart'); // or just stay here
+        router.push('/cart');
     };
 
     return (
         <div className={styles.page}>
-            <div className={styles.actions} style={{ position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                <button onClick={() => router.back()} style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {/* Fixed bottom bar */}
+            <div className={styles.actions}>
+                <button
+                    onClick={() => router.back()}
+                    style={{
+                        border: 'none',
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                    }}
+                >
                     <ArrowLeft size={20} /> Back
                 </button>
-                <div className={styles.totalPrice}>
-                    Total: ₹{calculateTotal()}
-                </div>
+                <div className={styles.totalPrice}>Total: ₹{calculateTotal()}</div>
             </div>
 
             <div className={styles.container}>
                 <div className={styles.layout}>
-
-                    {/* Left: Preview */}
+                    {/* ── Left: Click-to-view Preview ── */}
                     <div className={styles.previewPane}>
                         <h2 className={styles.sectionTitle}>Preview</h2>
-                        <div className={styles.previewImageContainer}>
-                            {/* Use a placeholder image for now, later this can be dynamic */}
-                            <img
-                                src={`https://placehold.co/400x533?text=${customizationData.category}`}
-                                alt="Preview"
-                                className={styles.baseImage}
-                            />
-                            <div className={styles.previewOverlay}>
-                                {Object.entries(selections).map(([sectionId, option]) => (
-                                    <div key={sectionId} style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>{customizationData.sections.find(s => s.id === sectionId)?.name}:</span>
-                                        <b>{option.name}</b>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <p style={{ marginTop: '1rem', color: '#666', fontSize: '0.9rem' }}>
-                            *Visualization is approximate. Final product may vary slightly.
-                        </p>
+                        <ProductPreview
+                            src={previewSrc}
+                            label={previewLabel}
+                            sublabel={previewSublabel}
+                            isBase={isBase}
+                            onReset={resetPreview}
+                            sections={customizationData.sections}
+                            selections={selections}
+                        />
                     </div>
 
-                    {/* Right: Customization Options */}
+                    {/* ── Right: Customization Options ── */}
                     <div className={styles.optionsContainer}>
                         {customizationData.sections.map((section) => (
                             <div key={section.id} className={styles.section}>
@@ -104,14 +115,23 @@ export default function CustomizationInterface({ customizationData, initialBaseP
                                 <div className={styles.optionsGrid}>
                                     {section.options.map((option) => {
                                         const isSelected = selections[section.id]?.id === option.id;
+                                        const isPreviewing = previewSrc === option.image && !isBase;
                                         return (
                                             <div
                                                 key={option.id}
                                                 className={`${styles.optionCard} ${isSelected ? styles.selected : ''}`}
-                                                onClick={() => handleSelect(section.id, option)}
+                                                onClick={() => handleSelect(section.id, section.name, option)}
                                             >
                                                 <div className={styles.optionImageWrapper}>
-                                                    <img src={option.image} alt={option.name} className={styles.optionImage} />
+                                                    <img
+                                                        src={option.image}
+                                                        alt={option.name}
+                                                        className={styles.optionImage}
+                                                    />
+                                                    {/* "Previewing" badge */}
+                                                    {isPreviewing && (
+                                                        <div className={styles.previewingBadge}>Viewing</div>
+                                                    )}
                                                 </div>
                                                 <div className={styles.optionInfo}>
                                                     <div className={styles.optionName}>{option.name}</div>
@@ -126,11 +146,14 @@ export default function CustomizationInterface({ customizationData, initialBaseP
                             </div>
                         ))}
 
-                        <button className={styles.addToCartBtn} onClick={handleAddToCart} style={{ width: '100%', marginTop: '1rem' }}>
-                            Add to Cart - ₹{calculateTotal()}
+                        <button
+                            className={styles.addToCartBtn}
+                            onClick={handleAddToCart}
+                            style={{ width: '100%', marginTop: '1rem' }}
+                        >
+                            Add to Cart — ₹{calculateTotal()}
                         </button>
                     </div>
-
                 </div>
             </div>
         </div>

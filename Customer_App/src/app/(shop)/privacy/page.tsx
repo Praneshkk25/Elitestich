@@ -10,7 +10,7 @@ export default function PrivacyPage() {
             <h1 style={{ color: 'var(--primary)', marginBottom: '2rem' }}>{t('legal.privacy')}</h1>
             <div style={{ color: 'var(--text-muted)', lineHeight: '1.8' }}>
                 <p style={{ marginBottom: '1.5rem' }}>
-                    At Elite Stitch World, we take your privacy seriously. This Privacy Policy describes how your personal information is collected, used, and shared when you visit or make a purchase from our site.
+                    At Elite World, we take your privacy seriously. This Privacy Policy describes how your personal information is collected, used, and shared when you visit or make a purchase from our site.
                 </p>
                 <h2 style={{ color: 'var(--foreground)', margin: '2rem 0 1rem' }}>Personal Information We Collect</h2>
                 <p style={{ marginBottom: '1.5rem' }}>
