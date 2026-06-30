@@ -44,10 +44,9 @@ function DesignsContent() {
 
             <div className="container">
                 <header className={styles.header}>
-                    <h1 className={styles.title}>Our Collection</h1>
+                    <h1 className={styles.title}>Our Services</h1>
                     <p className={styles.subtitle}>
-                        Browse our curated selection of premium designs.
-                        Choose a style to customize or upload your own inspiration.
+                        Handpicked styles. Stitched to perfection — just pick your favourite and let us do the magic.
                     </p>
                 </header>
 

@@ -52,7 +52,7 @@ export default function Navbar() {
                 <div className={styles.desktopMenu}>
                     <Link href="/order" className={styles.navLink}>Custom Order</Link>
                     <Link href="/track" className={styles.navLink}>Track Order</Link>
-                    <Link href="/about" className={styles.navLink}>About Us</Link>
+                    <Link href="/designs" className={styles.navLink}>Services</Link>
                     <Link href="/contact" className={styles.navLink}>Connect With Us</Link>
                 </div>
 
@@ -126,7 +126,7 @@ export default function Navbar() {
                     <Link href="/designs" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Designs</Link>
                     <Link href="/order" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Custom Order</Link>
                     <Link href="/track" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Track Order</Link>
-                    <Link href="/about" className={styles.mobileLink} onClick={() => setIsOpen(false)}>About Us</Link>
+                    <Link href="/designs" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Services</Link>
                     <Link href="/contact" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Connect With Us</Link>
                 </div>
             </div>
