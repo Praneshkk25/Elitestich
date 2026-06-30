@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Eye, EyeOff } from 'lucide-react';
 import styles from '../(shop)/login/auth.module.css'; // Reuse login styles
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 export default function SignupPage() {
     const [email, setEmail] = useState('');
@@ -36,9 +39,6 @@ export default function SignupPage() {
         setError(null);
 
         try {
-            const { createUserWithEmailAndPassword, sendEmailVerification } = await import('firebase/auth');
-            const { auth, db } = await import('@/lib/firebase');
-            const { doc, setDoc } = await import('firebase/firestore');
             
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
@@ -77,8 +77,6 @@ export default function SignupPage() {
         setResendMessage(null);
 
         try {
-            const { auth } = await import('@/lib/firebase');
-            const { sendEmailVerification } = await import('firebase/auth');
             
             if (auth.currentUser) {
                 await sendEmailVerification(auth.currentUser);
