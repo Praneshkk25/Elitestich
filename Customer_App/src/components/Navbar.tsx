@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingBag, Menu, X, User, LogOut, Sun, Moon } from 'lucide-react';
+import { ShoppingBag, Menu, X, User, LogOut, Sun, Moon, Home } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useCart } from '@/contexts/CartContext';
 import { auth } from '@/lib/firebase';
@@ -50,9 +50,10 @@ export default function Navbar() {
 
                 {/* Desktop Menu */}
                 <div className={styles.desktopMenu}>
+                    <Link href="/" className={styles.navLink} aria-label="Home" title="Home"><Home size={18} /></Link>
                     <Link href="/order" className={styles.navLink}>Custom Order</Link>
-                    <Link href="/track" className={styles.navLink}>Track Order</Link>
                     <Link href="/designs" className={styles.navLink}>Services</Link>
+                    <Link href="/track" className={styles.navLink}>Track Order</Link>
                     <Link href="/contact" className={styles.navLink}>Connect With Us</Link>
                 </div>
 
@@ -123,6 +124,7 @@ export default function Navbar() {
 
                 {/* Mobile Menu */}
                 <div className={`${styles.mobileMenu} ${isOpen ? styles.open : ''}`}>
+                    <Link href="/" className={styles.mobileLink} onClick={() => setIsOpen(false)}>🏠 Home</Link>
                     <Link href="/designs" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Designs</Link>
                     <Link href="/order" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Custom Order</Link>
                     <Link href="/track" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Track Order</Link>
