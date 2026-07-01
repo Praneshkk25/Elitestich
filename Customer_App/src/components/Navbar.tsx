@@ -68,28 +68,30 @@ export default function Navbar() {
                         {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
                     </button>
 
-                    {user ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <Link href="/profile" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                <User size={16} style={{ color: 'var(--primary)' }} />
-                                <span style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
-                                    {user.email?.split('@')[0]}
-                                </span>
+                    <div className={styles.desktopUserSection}>
+                        {user ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <Link href="/profile" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <User size={16} style={{ color: 'var(--primary)' }} />
+                                    <span style={{ transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'} onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}>
+                                        {user.email?.split('@')[0]}
+                                    </span>
+                                </Link>
+                                <button
+                                    onClick={handleLogout}
+                                    className={styles.iconBtn}
+                                    aria-label="Logout"
+                                    title="Logout"
+                                >
+                                    <LogOut size={20} />
+                                </button>
+                            </div>
+                        ) : (
+                            <Link href="/login" className={styles.iconBtn} aria-label="Login">
+                                <User size={20} />
                             </Link>
-                            <button
-                                onClick={handleLogout}
-                                className={styles.iconBtn}
-                                aria-label="Logout"
-                                title="Logout"
-                            >
-                                <LogOut size={20} />
-                            </button>
-                        </div>
-                    ) : (
-                        <Link href="/login" className={styles.iconBtn} aria-label="Login">
-                            <User size={20} />
-                        </Link>
-                    )}
+                        )}
+                    </div>
 
                     <Link href="/cart" className={styles.iconBtn} aria-label="Cart" style={{ position: 'relative' }}>
                         <ShoppingBag size={20} />
@@ -125,11 +127,22 @@ export default function Navbar() {
                 {/* Mobile Menu */}
                 <div className={`${styles.mobileMenu} ${isOpen ? styles.open : ''}`}>
                     <Link href="/" className={styles.mobileLink} onClick={() => setIsOpen(false)}>🏠 Home</Link>
-                    <Link href="/designs" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Designs</Link>
-                    <Link href="/order" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Custom Order</Link>
-                    <Link href="/track" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Track Order</Link>
-                    <Link href="/designs" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Services</Link>
-                    <Link href="/contact" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Connect With Us</Link>
+                    <Link href="/order" className={styles.mobileLink} onClick={() => setIsOpen(false)}>✂️ Custom Order</Link>
+                    <Link href="/designs" className={styles.mobileLink} onClick={() => setIsOpen(false)}>👗 Services</Link>
+                    <Link href="/track" className={styles.mobileLink} onClick={() => setIsOpen(false)}>📦 Track Order</Link>
+                    <Link href="/contact" className={styles.mobileLink} onClick={() => setIsOpen(false)}>✉️ Connect With Us</Link>
+                    
+                    {user ? (
+                        <div className={styles.mobileUserSection}>
+                            <div className={styles.mobileUserEmail}>👤 Logged in as: {user.email?.split('@')[0]}</div>
+                            <Link href="/profile" className={styles.mobileLink} onClick={() => setIsOpen(false)}>Profile Settings</Link>
+                            <button onClick={() => { handleLogout(); setIsOpen(false); }} className={styles.mobileLogoutBtn}>
+                                Logout
+                            </button>
+                        </div>
+                    ) : (
+                        <Link href="/login" className={styles.mobileLink} onClick={() => setIsOpen(false)}>👤 Login / Signup</Link>
+                    )}
                 </div>
             </div>
         </nav>
