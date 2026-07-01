@@ -224,5 +224,9 @@
     .cardsContainer {
         flex-direction: column;
         align-items: center;
+        margin-top: 2rem; /* Add spacing below subtitle on mobile */
+    }
+    .imageWrapper {
+        height: 100vh;
     }
 }
