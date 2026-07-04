@@ -165,35 +165,6 @@ export const customizationOptions: ProductCustomization[] = [
                     { id: 'pp3', name: 'Inverted Pleats', image: 'https://placehold.co/100x100?text=Inverted', price: 100 },
                     { id: 'pp4', name: 'Accordion Pleats', image: 'https://placehold.co/100x100?text=Accordion', price: 150 },
                 ]
-            },
-            {
-                id: 'drape_style',
-                name: 'Drape Style',
-                options: [
-                    { id: 'pd1', name: 'Nivi (Classic)', image: 'https://placehold.co/100x100?text=Nivi', price: 0 },
-                    { id: 'pd2', name: 'Bengali Style', image: 'https://placehold.co/100x100?text=Bengali', price: 100 },
-                    { id: 'pd3', name: 'Gujarati Style', image: 'https://placehold.co/100x100?text=Gujarati', price: 100 },
-                    { id: 'pd4', name: 'Coorg Style', image: 'https://placehold.co/100x100?text=Coorg', price: 150 },
-                ]
-            },
-            {
-                id: 'pleat_width',
-                name: 'Pleat Width',
-                options: [
-                    { id: 'pw1', name: 'Narrow (1 inch)', image: 'https://placehold.co/100x100?text=Narrow', price: 0 },
-                    { id: 'pw2', name: 'Medium (2 inch)', image: 'https://placehold.co/100x100?text=Medium', price: 50 },
-                    { id: 'pw3', name: 'Wide (3 inch)', image: 'https://placehold.co/100x100?text=Wide', price: 100 },
-                ]
-            },
-            {
-                id: 'border_finish',
-                name: 'Border Finishing',
-                options: [
-                    { id: 'bf1', name: 'No Finishing', image: 'https://placehold.co/100x100?text=Plain', price: 0 },
-                    { id: 'bf2', name: 'Fall & Lace', image: 'https://placehold.co/100x100?text=Fall+%26+Lace', price: 200 },
-                    { id: 'bf3', name: 'Iron Pressed Only', image: 'https://placehold.co/100x100?text=Pressed', price: 100 },
-                    { id: 'bf4', name: 'Stitched Pleats', image: 'https://placehold.co/100x100?text=Stitched', price: 250 },
-                ]
             }
         ]
     }
